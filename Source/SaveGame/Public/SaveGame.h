@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright (c) 2026 장윤제. All rights reserved.
 
 #pragma once
 
