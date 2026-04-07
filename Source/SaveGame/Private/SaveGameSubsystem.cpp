@@ -18,7 +18,7 @@ void USaveGameSubsystem::Initialize(FSubsystemCollectionBase& _collection)
 
 	if (IsInvalid(_SaveGame))
 	{
-		if (IsInvalid(settings->_SaveGameClass))
+		if (settings->_SaveGameClass.IsNull())
 		{
 			TRACE_ERROR(TEXT("Dev setting에서 _SaveGameClass 를 설정하세요."));
 			return;
