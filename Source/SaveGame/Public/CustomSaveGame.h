@@ -56,15 +56,23 @@ public:
 	virtual void ClearData();
 
 public:
+	UFUNCTION(BlueprintCallable, Category = "SaveGame")
 	bool SaveBoolData(FName _key, bool _value);
+	UFUNCTION(BlueprintPure, Category = "SaveGame")
 	bool FindSavedBoolData(FName _key, bool& _out_value) const;
 
+	UFUNCTION(BlueprintCallable, Category = "SaveGame")
 	bool SaveIntData(FName _key, int32 _value);
+	UFUNCTION(BlueprintPure, Category = "SaveGame")
 	bool FindSavedIntData(FName _key, int32& _out_value) const;
 
+	UFUNCTION(BlueprintCallable, Category = "SaveGame")
 	bool SaveFloatData(FName _key, float _value);
+	UFUNCTION(BlueprintPure, Category = "SaveGame")
 	bool FindSavedFloatData(FName _key, float& _out_value) const;
 
+	UFUNCTION(BlueprintCallable, Category = "SaveGame")
 	bool SaveStringData(FName _key, const FString& _value);
+	UFUNCTION(BlueprintPure, Category = "SaveGame")
 	bool FindSavedStringData(FName _key, FString& _out_value) const;
 };
