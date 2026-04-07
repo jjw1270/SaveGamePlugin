@@ -18,6 +18,12 @@ void USaveGameSubsystem::Initialize(FSubsystemCollectionBase& _collection)
 
 	if (IsInvalid(_SaveGame))
 	{
+		if (IsInvalid(settings->_SaveGameClass))
+		{
+			TRACE_ERROR(TEXT("Dev setting에서 _SaveGameClass 를 설정하세요."));
+			return;
+		}
+
 		_SaveGame = Cast<UCustomSaveGame>(UGameplayStatics::CreateSaveGameObject(settings->_SaveGameClass.LoadSynchronous()));
 	}
 
