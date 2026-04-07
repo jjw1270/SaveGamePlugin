@@ -13,9 +13,9 @@ class SAVEGAME_API USaveGameDeveloperSettings : public UDeveloperSettings
 	GENERATED_BODY()
 	
 public:
-	UPROPERTY(EditAnywhere, Config)
+	UPROPERTY(EditAnywhere, Config, Category = "SaveGame")
 	TSoftClassPtr<class UCustomSaveGame> _SaveGameClass = nullptr;
 
-	UPROPERTY(EditAnywhere, Config)
+	UPROPERTY(EditAnywhere, Config, Category = "SaveGame")
 	FString _SaveGameSlotName = TEXT("SaveGameSlot");
 };
