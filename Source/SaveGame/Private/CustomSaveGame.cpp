@@ -119,7 +119,10 @@ bool UCustomSaveGame::FindSavedBoolData(FName _key, bool& _out_value) const
 	if (key_type != ESaveDataType::Bool)
 	{
 		if (key_type != ESaveDataType::NA)
+		{
 			TRACE_WARNING(TEXT("잘못된 키 타입입니다. Key : %s, Type : %s"), *_key.ToString(), *TEnumToString(key_type));
+		}
+
 		return false;
 	}
 
@@ -151,7 +154,10 @@ bool UCustomSaveGame::FindSavedIntData(FName _key, int32& _out_value) const
 	if (key_type != ESaveDataType::Int)
 	{
 		if (key_type != ESaveDataType::NA)
+		{
 			TRACE_WARNING(TEXT("잘못된 키 타입입니다. Key : %s, Type : %s"), *_key.ToString(), *TEnumToString(key_type));
+		}
+
 		return false;
 	}
 
@@ -183,7 +189,10 @@ bool UCustomSaveGame::FindSavedFloatData(FName _key, float& _out_value) const
 	if (key_type != ESaveDataType::Float)
 	{
 		if (key_type != ESaveDataType::NA)
+		{
 			TRACE_WARNING(TEXT("잘못된 키 타입입니다. Key : %s, Type : %s"), *_key.ToString(), *TEnumToString(key_type));
+		}
+
 		return false;
 	}
 
@@ -215,7 +224,10 @@ bool UCustomSaveGame::FindSavedStringData(FName _key, FString& _out_value) const
 	if (key_type != ESaveDataType::String)
 	{
 		if(key_type != ESaveDataType::NA)
+		{
 			TRACE_WARNING(TEXT("잘못된 키 타입입니다. Key : %s, Type : %s"), *_key.ToString(), *TEnumToString(key_type));
+		}
+
 		return false;
 	}
 
