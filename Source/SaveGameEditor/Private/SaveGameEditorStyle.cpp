@@ -19,7 +19,10 @@ void FSaveGameEditorStyle::Initialize()
 	_StyleSet = MakeShareable(new FSlateStyleSet("SaveGameEditorStyle"));
 
 	TSharedPtr<IPlugin> plugin = IPluginManager::Get().FindPlugin("SaveGame");
-	_StyleSet->SetContentRoot(plugin->GetBaseDir() / TEXT("Resources"));
+	if (IsValid(plugin))
+	{
+		_StyleSet->SetContentRoot(plugin->GetBaseDir() / TEXT("Resources"));
+	}
 
 	const FVector2D icon40(40.f, 40.f);
 	_StyleSet->Set("SaveGame.Clear", new IMAGE_BRUSH("ClearSaveGameData_40", icon40));
