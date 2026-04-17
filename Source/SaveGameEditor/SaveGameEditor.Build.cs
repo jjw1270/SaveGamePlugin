@@ -25,20 +25,19 @@ public class SaveGameEditor : ModuleRules
 		PublicDependencyModuleNames.AddRange(
 			new string[]
 			{
-				// ... add other public dependencies that you statically link with here ...
-			}
+                "Core",
+                "SlateCore",
+            }
 			);
 			
 		
 		PrivateDependencyModuleNames.AddRange(
 			new string[]
 			{
-                "Core",
                 "CoreUObject",
-				"Engine",
-				"Slate",
-				"SlateCore",
-				"CommonLibrary",
+                "Engine",
+                "Slate",
+                "CommonLibrary",
                 "SaveGame",
                 "UnrealEd",
                 "ToolMenus",

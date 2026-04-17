@@ -25,7 +25,9 @@ public class SaveGame : ModuleRules
 		PublicDependencyModuleNames.AddRange(
 			new string[]
 			{
-				"Core",
+                "Core",
+                "CoreUObject",
+                "Engine",
                 "DeveloperSettings",
             }
             );
@@ -34,8 +36,6 @@ public class SaveGame : ModuleRules
 		PrivateDependencyModuleNames.AddRange(
 			new string[]
 			{
-                "CoreUObject",
-                "Engine",
                 "Slate",
                 "SlateCore",
                 "CommonLibrary",
