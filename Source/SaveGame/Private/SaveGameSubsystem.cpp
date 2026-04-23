@@ -6,35 +6,34 @@
 #include "Kismet/GameplayStatics.h"
 #include "SaveGameDeveloperSettings.h"
 
-void USaveGameSubsystem::Initialize(FSubsystemCollectionBase& _collection)
-{
-	Super::Initialize(_collection);
 
+void USaveGameSubsystem::NewGame()
+{
 	const auto settings = GetDefault<USaveGameDeveloperSettings>();
-	if (IsInvalid(settings))
+	if (IsInvalid(settings) || settings->_SaveGameClass.IsNull())
+	{
+		TRACE_ERROR(TEXT("SaveGame Dev Setting Error"));
 		return;
+	}
+
+	_SaveGame = Cast<UCustomSaveGame>(UGameplayStatics::CreateSaveGameObject(settings->_SaveGameClass.LoadSynchronous()));
+}
+
+bool USaveGameSubsystem::LoadGame()
+{
+	const auto settings = GetDefault<USaveGameDeveloperSettings>();
+	if (IsInvalid(settings) || settings->_SaveGameClass.IsNull())
+	{
+		TRACE_ERROR(TEXT("SaveGame Dev Setting Error"));
+		return false;
+	}
 
 	_SaveGame = Cast<UCustomSaveGame>(UGameplayStatics::LoadGameFromSlot(settings->_SaveGameSlotName, 0));
 
-	if (IsInvalid(_SaveGame))
-	{
-		if (settings->_SaveGameClass.IsNull())
-		{
-			TRACE_ERROR(TEXT("Dev setting에서 _SaveGameClass 를 설정하세요."));
-			return;
-		}
-
-		_SaveGame = Cast<UCustomSaveGame>(UGameplayStatics::CreateSaveGameObject(settings->_SaveGameClass.LoadSynchronous()));
-	}
-
-	if (IsInvalid(_SaveGame))
-	{
-		TRACE_ERROR(TEXT("SaveGame 초기화 실패"));
-		return;
-	}
+	return IsValid(_SaveGame);
 }
 
-void USaveGameSubsystem::SaveGameToSlot()
+void USaveGameSubsystem::SaveGame()
 {
 	if (IsInvalid(_SaveGame))
 	{
@@ -74,11 +73,11 @@ UCustomSaveGame* USaveGameHelper::GetSaveGame_Internal(const UObject* _world_ctx
 	return nullptr;
 }
 
-void USaveGameHelper::SaveGameToSlot(const UObject* _world_ctx)
+void USaveGameHelper::SaveGame(const UObject* _world_ctx)
 {
 	auto save_game_subsys = UCommonUtils::GetGameInstanceSubsystem<USaveGameSubsystem>(_world_ctx);
 	if (IsInvalid(save_game_subsys))
 		return;
 
-	save_game_subsys->SaveGameToSlot();
+	save_game_subsys->SaveGame();
 }

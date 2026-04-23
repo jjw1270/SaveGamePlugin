@@ -21,12 +21,13 @@ protected:
 	TObjectPtr<UCustomSaveGame> _SaveGame = nullptr;
 
 public:
-	virtual void Initialize(FSubsystemCollectionBase& _collection) override;
+	void NewGame();
+	bool LoadGame();
+	void SaveGame();
 
 public:
 	UCustomSaveGame* GetSaveGame() const { return _SaveGame; }
 
-	void SaveGameToSlot();
 	void ClearSaveGameData();
 
 };
@@ -63,5 +64,5 @@ private:
 
 public:
 	UFUNCTION(BlueprintCallable, meta = (WorldContext = "_world_ctx"))
-	static void SaveGameToSlot(const UObject* _world_ctx);
+	static void SaveGame(const UObject* _world_ctx);
 };
