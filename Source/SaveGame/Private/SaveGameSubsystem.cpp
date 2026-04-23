@@ -7,16 +7,18 @@
 #include "SaveGameDeveloperSettings.h"
 
 
-void USaveGameSubsystem::NewGame()
+bool USaveGameSubsystem::NewGame()
 {
 	const auto settings = GetDefault<USaveGameDeveloperSettings>();
 	if (IsInvalid(settings) || settings->_SaveGameClass.IsNull())
 	{
 		TRACE_ERROR(TEXT("SaveGame Dev Setting Error"));
-		return;
+		return false;
 	}
 
 	_SaveGame = Cast<UCustomSaveGame>(UGameplayStatics::CreateSaveGameObject(settings->_SaveGameClass.LoadSynchronous()));
+
+	return IsValid(_SaveGame);
 }
 
 bool USaveGameSubsystem::CanLoadGame() const
@@ -31,31 +33,33 @@ bool USaveGameSubsystem::CanLoadGame() const
 	return IsValid(UGameplayStatics::LoadGameFromSlot(settings->_SaveGameSlotName, 0));
 }
 
-void USaveGameSubsystem::LoadGame()
+bool USaveGameSubsystem::LoadGame()
 {
 	const auto settings = GetDefault<USaveGameDeveloperSettings>();
 	if (IsInvalid(settings) || settings->_SaveGameClass.IsNull())
 	{
 		TRACE_ERROR(TEXT("SaveGame Dev Setting Error"));
-		return;
+		return false;
 	}
 
 	_SaveGame = Cast<UCustomSaveGame>(UGameplayStatics::LoadGameFromSlot(settings->_SaveGameSlotName, 0));
+
+	return IsValid(_SaveGame);
 }
 
-void USaveGameSubsystem::SaveGame()
+bool USaveGameSubsystem::SaveGame()
 {
 	if (IsInvalid(_SaveGame))
 	{
 		TRACE_ERROR(TEXT("SaveGame Is Invalid"));
-		return;
+		return false;
 	}
 
 	const auto settings = GetDefault<USaveGameDeveloperSettings>();
 	if (IsInvalid(settings))
-		return;
+		return false;
 
-	UGameplayStatics::SaveGameToSlot(_SaveGame, settings->_SaveGameSlotName, 0);
+	return UGameplayStatics::SaveGameToSlot(_SaveGame, settings->_SaveGameSlotName, 0);
 }
 
 void USaveGameSubsystem::ClearSaveGameData()

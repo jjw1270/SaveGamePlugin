@@ -21,12 +21,12 @@ protected:
 	TObjectPtr<UCustomSaveGame> _SaveGame = nullptr;
 
 public:
-	void NewGame();
+	bool NewGame();
 
 	bool CanLoadGame() const;
-	void LoadGame();
+	bool LoadGame();
 
-	void SaveGame();
+	bool SaveGame();
 
 public:
 	UCustomSaveGame* GetSaveGame() const { return _SaveGame; }
