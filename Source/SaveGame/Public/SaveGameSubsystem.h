@@ -22,7 +22,10 @@ protected:
 
 public:
 	void NewGame();
-	bool LoadGame();
+
+	bool CanLoadGame() const;
+	void LoadGame();
+
 	void SaveGame();
 
 public:

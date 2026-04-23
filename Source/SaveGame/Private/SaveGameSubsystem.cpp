@@ -19,7 +19,7 @@ void USaveGameSubsystem::NewGame()
 	_SaveGame = Cast<UCustomSaveGame>(UGameplayStatics::CreateSaveGameObject(settings->_SaveGameClass.LoadSynchronous()));
 }
 
-bool USaveGameSubsystem::LoadGame()
+bool USaveGameSubsystem::CanLoadGame() const
 {
 	const auto settings = GetDefault<USaveGameDeveloperSettings>();
 	if (IsInvalid(settings) || settings->_SaveGameClass.IsNull())
@@ -28,9 +28,19 @@ bool USaveGameSubsystem::LoadGame()
 		return false;
 	}
 
-	_SaveGame = Cast<UCustomSaveGame>(UGameplayStatics::LoadGameFromSlot(settings->_SaveGameSlotName, 0));
+	return IsValid(UGameplayStatics::LoadGameFromSlot(settings->_SaveGameSlotName, 0));
+}
 
-	return IsValid(_SaveGame);
+void USaveGameSubsystem::LoadGame()
+{
+	const auto settings = GetDefault<USaveGameDeveloperSettings>();
+	if (IsInvalid(settings) || settings->_SaveGameClass.IsNull())
+	{
+		TRACE_ERROR(TEXT("SaveGame Dev Setting Error"));
+		return;
+	}
+
+	_SaveGame = Cast<UCustomSaveGame>(UGameplayStatics::LoadGameFromSlot(settings->_SaveGameSlotName, 0));
 }
 
 void USaveGameSubsystem::SaveGame()
