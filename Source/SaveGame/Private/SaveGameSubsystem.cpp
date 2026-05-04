@@ -22,7 +22,7 @@ bool USaveGameSubsystem::LoadGame()
 	return IsValid(_SaveGame);
 }
 
-void USaveGameSubsystem::AsyncLoadGame(F_OnLoadGameFinished _on_load_game_finished_event)
+void USaveGameSubsystem::AsyncLoadGame(FD_OnLoadGameFinished _on_load_game_finished_event)
 {
 	const auto settings = GetDefault<USaveGameDeveloperSettings>();
 	if (IsInvalid(settings) || settings->_SaveGameClass.IsNull())

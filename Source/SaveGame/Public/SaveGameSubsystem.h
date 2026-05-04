@@ -8,7 +8,7 @@
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "SaveGameSubsystem.generated.h"
 
-DECLARE_DELEGATE_OneParam(F_OnLoadGameFinished, bool);
+DECLARE_DYNAMIC_DELEGATE_OneParam(FD_OnLoadGameFinished, bool, _load_success);
 
 /*
  * 오직 하나의 슬롯만 존재.
@@ -23,14 +23,20 @@ protected:
 	TObjectPtr<UCustomSaveGame> _SaveGame = nullptr;
 
 public:
+	UFUNCTION(BlueprintCallable, Category = "SaveGame")
 	bool LoadGame();
-	void AsyncLoadGame(F_OnLoadGameFinished _on_load_game_finished_event);
+	
+	UFUNCTION(BlueprintCallable, Category = "SaveGame")
+	void AsyncLoadGame(FD_OnLoadGameFinished _on_load_game_finished_event);
 
+	UFUNCTION(BlueprintCallable, Category = "SaveGame")
 	bool SaveGame();
 
+	UFUNCTION(BlueprintCallable, Category = "SaveGame")
 	void ResetGame();
 
 public:
+	UFUNCTION(BlueprintPure, Category = "SaveGame")
 	UCustomSaveGame* GetSaveGame() const { return _SaveGame; }
 
 };
@@ -66,6 +72,6 @@ private:
 	static UCustomSaveGame* GetSaveGame_Internal(const UObject* _world_ctx);
 
 public:
-	UFUNCTION(BlueprintCallable, meta = (WorldContext = "_world_ctx"))
+	UFUNCTION(BlueprintCallable, meta = (WorldContext = "_world_ctx"), Category = "SaveGame")
 	static void SaveGame(const UObject* _world_ctx);
 };
