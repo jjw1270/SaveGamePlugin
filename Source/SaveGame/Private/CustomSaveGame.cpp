@@ -99,6 +99,15 @@ void UCustomSaveGame::ClearData()
 	_StringDataMap.Empty();
 }
 
+bool UCustomSaveGame::IsEmpty() const
+{
+	return _KeyTypeMap.IsEmpty() &&
+				_BoolDataMap.IsEmpty() &&
+				_IntDataMap.IsEmpty() &&
+				_FloatDataMap.IsEmpty() &&
+				_StringDataMap.IsEmpty();
+}
+
 bool UCustomSaveGame::SaveBoolData(FName _key, bool _value)
 {
 	if (CanSetKey(_key, ESaveDataType::Bool) == false)

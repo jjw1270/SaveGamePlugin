@@ -53,18 +53,18 @@ void FSaveGameEditorModule::AddSaveGameMenuEntry()
 	if (IsInvalid(toolbar_menu))
 		return;
 
-	FToolMenuSection& section = toolbar_menu->FindOrAddSection(TEXT("ClearSaveGameData"));
+	FToolMenuSection& section = toolbar_menu->FindOrAddSection(TEXT("ResetGame"));
 
 	section.AddEntry(FToolMenuEntry::InitToolBarButton(
-		TEXT("ClearSaveGameData"),
-		FUIAction(FExecuteAction::CreateRaw(this, &FSaveGameEditorModule::OnClicked_ClearSaveGameData)),
-		LOCTEXT("ClearSaveGameData_Label", "Clear Save Game Data"),
-		LOCTEXT("ClearSaveGameData_ToolTip", "Clear Save Game Data."),
-		FSlateIcon(FSaveGameEditorStyle::GetStyleSetName(), "SaveGame.Clear")
+		TEXT("ResetGame"),
+		FUIAction(FExecuteAction::CreateRaw(this, &FSaveGameEditorModule::OnClicked_ResetGame)),
+		LOCTEXT("ResetGame_Label", "Reset Game"),
+		LOCTEXT("ResetGame_ToolTip", "Reset Game."),
+		FSlateIcon(FSaveGameEditorStyle::GetStyleSetName(), "SaveGame.Reset")
 	));
 }
 
-void FSaveGameEditorModule::OnClicked_ClearSaveGameData()
+void FSaveGameEditorModule::OnClicked_ResetGame()
 {
 	const auto settings = GetDefault<USaveGameDeveloperSettings>();
 	if (IsInvalid(settings))

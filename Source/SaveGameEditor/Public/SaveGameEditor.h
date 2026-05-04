@@ -17,5 +17,5 @@ private:
 	void RegisterMenus();
 	void AddSaveGameMenuEntry();
 
-	void OnClicked_ClearSaveGameData();
+	void OnClicked_ResetGame();
 };

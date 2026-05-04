@@ -53,9 +53,13 @@ public:
 	bool ContainsKey(FName _key) const;
 	ESaveDataType GetKeyType(FName _key) const;
 
+	UFUNCTION(BlueprintCallable, Category = "SaveGame")
 	virtual void ClearData();
 
 public:
+	UFUNCTION(BlueprintPure, Category = "SaveGame")
+	virtual bool IsEmpty() const;
+
 	UFUNCTION(BlueprintCallable, Category = "SaveGame")
 	bool SaveBoolData(FName _key, bool _value);
 	UFUNCTION(BlueprintPure, Category = "SaveGame")

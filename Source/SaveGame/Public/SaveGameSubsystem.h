@@ -21,17 +21,17 @@ protected:
 	TObjectPtr<UCustomSaveGame> _SaveGame = nullptr;
 
 public:
-	bool NewGame();
-
-	bool CanLoadGame() const;
 	bool LoadGame();
+
+	DECLARE_DELEGATE_OneParam(F_OnLoadGameFinished, bool);
+	void AsyncLoadGame(F_OnLoadGameFinished _on_load_game_finished_event);
 
 	bool SaveGame();
 
+	void ResetGame();
+
 public:
 	UCustomSaveGame* GetSaveGame() const { return _SaveGame; }
-
-	void ClearSaveGameData();
 
 };
 
