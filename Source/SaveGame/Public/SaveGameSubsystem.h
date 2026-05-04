@@ -8,8 +8,10 @@
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "SaveGameSubsystem.generated.h"
 
+DECLARE_DELEGATE_OneParam(F_OnLoadGameFinished, bool);
+
 /*
- * save game 하나만 존재.
+ * 오직 하나의 슬롯만 존재.
  */
 UCLASS()
 class SAVEGAME_API USaveGameSubsystem : public UGameInstanceSubsystem
@@ -22,8 +24,6 @@ protected:
 
 public:
 	bool LoadGame();
-
-	DECLARE_DELEGATE_OneParam(F_OnLoadGameFinished, bool);
 	void AsyncLoadGame(F_OnLoadGameFinished _on_load_game_finished_event);
 
 	bool SaveGame();
