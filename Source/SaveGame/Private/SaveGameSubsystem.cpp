@@ -33,6 +33,14 @@ void USaveGameSubsystem::Initialize(FSubsystemCollectionBase& _collection)
 	}
 }
 
+void USaveGameSubsystem::SetSaveGameCanModify(bool _can_modify)
+{
+	if (IsValid(_SaveGame))
+	{
+		_SaveGame->SetCanModify(_can_modify);
+	}
+}
+
 bool USaveGameSubsystem::LoadGame()
 {
 	const auto settings = GetDefault<USaveGameDeveloperSettings>();
@@ -53,19 +61,37 @@ bool USaveGameSubsystem::LoadGame()
 	return load_success;
 }
 
-void USaveGameSubsystem::AsyncLoadGame(FD_OnLoadGameFinished _on_load_game_finished_event)
+void USaveGameSubsystem::AsyncLoadGame()
 {
 	const auto settings = GetDefault<USaveGameDeveloperSettings>();
 	if (IsInvalid(settings))
 	{
 		TRACE_ERROR(TEXT("SaveGame Dev Setting Error"));
-		_on_load_game_finished_event.ExecuteIfBound(false);
+		OnAsyncLoadGameFinished.Broadcast(false);
 		return;
 	}
 
+	if (_IsAsyncLoading)
+	{
+		TRACE_WARNING(TEXT("SaveGame is already loading."));
+		OnAsyncLoadGameFinished.Broadcast(false);
+		return;
+	}
+
+	if (_IsAsyncSaving)
+	{
+		TRACE_WARNING(TEXT("SaveGame is already saving."));
+		OnAsyncLoadGameFinished.Broadcast(false);
+		return;
+	}
+
+	_IsAsyncLoading = true;
+	SetSaveGameCanModify(false);
+	OnAsyncLoadGameStarted.Broadcast();
+
 	UGameplayStatics::AsyncLoadGameFromSlot(settings->_SaveGameSlotName, 0, 
 		FAsyncLoadGameFromSlotDelegate::CreateWeakLambda(this,
-			[this, _on_load_game_finished_event](const FString& _slot_name, const int32 _user_index, USaveGame* _save_game)
+			[this](const FString& _slot_name, const int32 _user_index, USaveGame* _save_game)
 			{
 				auto loaded_save_game = Cast<UCustomSaveGame>(_save_game);
 
@@ -75,7 +101,10 @@ void USaveGameSubsystem::AsyncLoadGame(FD_OnLoadGameFinished _on_load_game_finis
 					_SaveGame = loaded_save_game;
 				}
 
-				_on_load_game_finished_event.ExecuteIfBound(load_success);
+				_IsAsyncLoading = false;
+				SetSaveGameCanModify(true);
+
+				OnAsyncLoadGameFinished.Broadcast(load_success);
 			}
 		)
 	);
@@ -96,30 +125,39 @@ bool USaveGameSubsystem::SaveGame()
 	return UGameplayStatics::SaveGameToSlot(_SaveGame, settings->_SaveGameSlotName, 0);
 }
 
-void USaveGameSubsystem::AsyncSaveGame(FD_OnSaveGameFinished _on_save_game_finished_event)
+void USaveGameSubsystem::AsyncSaveGame()
 {
 	if (IsInvalid(_SaveGame))
 	{
 		TRACE_ERROR(TEXT("SaveGame Is Invalid"));
-		_on_save_game_finished_event.ExecuteIfBound(false);
+		OnAsyncSaveGameFinished.Broadcast(false);
 		return;
 	}
 
 	const auto settings = GetDefault<USaveGameDeveloperSettings>();
 	if (IsInvalid(settings))
 	{
-		_on_save_game_finished_event.ExecuteIfBound(false);
+		OnAsyncSaveGameFinished.Broadcast(false);
 		return;
 	}
 
 	if (_IsAsyncSaving)
 	{
 		TRACE_WARNING(TEXT("SaveGame is already saving."));
-		_on_save_game_finished_event.ExecuteIfBound(false);
+		OnAsyncSaveGameFinished.Broadcast(false);
+		return;
+	}
+
+	if (_IsAsyncLoading)
+	{
+		TRACE_WARNING(TEXT("SaveGame is already loading."));
+		OnAsyncSaveGameFinished.Broadcast(false);
 		return;
 	}
 
 	_IsAsyncSaving = true;
+	SetSaveGameCanModify(false);
+	OnAsyncSaveGameStarted.Broadcast();
 
 	if (IsInvalid(_AsyncSaveGameWidget))
 	{
@@ -141,16 +179,17 @@ void USaveGameSubsystem::AsyncSaveGame(FD_OnSaveGameFinished _on_save_game_finis
 
 	return UGameplayStatics::AsyncSaveGameToSlot(_SaveGame, settings->_SaveGameSlotName, 0,
 		FAsyncSaveGameToSlotDelegate::CreateWeakLambda(this,
-			[this, _on_save_game_finished_event](const FString& _slot_name, const int32 _user_index, bool _is_success)
+			[this](const FString& _slot_name, const int32 _user_index, bool _is_success)
 			{
 				_IsAsyncSaving = false;
+				SetSaveGameCanModify(true);
 
 				if (IsValid(_AsyncSaveGameWidget))
 				{
 					_AsyncSaveGameWidget->RemoveFromParent();
 				}
 
-				_on_save_game_finished_event.ExecuteIfBound(_is_success);
+				OnAsyncSaveGameFinished.Broadcast(_is_success);
 			}
 		)
 	);

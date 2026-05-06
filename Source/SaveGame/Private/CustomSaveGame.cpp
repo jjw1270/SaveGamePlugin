@@ -15,6 +15,15 @@ bool UCustomSaveGame::CanSetKey(FName _key, ESaveDataType _target_type) const
 	return IsInvalid(found_type_ptr) || *found_type_ptr == _target_type;
 }
 
+bool UCustomSaveGame::CanModifySaveGameData(FName _key) const
+{
+	if (_CanModify)
+		return true;
+
+	TRACE_WARNING(TEXT("SaveGame 수정 불가 상태입니다. Key : %s"), *_key.ToString());
+	return false;
+}
+
 void UCustomSaveGame::RegisterKeyType(FName _key, ESaveDataType _type)
 {
 	_KeyTypeMap.Add(_key, _type);
@@ -50,6 +59,9 @@ void UCustomSaveGame::UnregisterKeyTypeIfUnused(FName _key)
 
 bool UCustomSaveGame::RemoveKey(FName _key)
 {
+	if (CanModifySaveGameData(_key) == false)
+		return false;
+
 	bool is_removed = false;
 
 	const ESaveDataType key_type = GetKeyType(_key);
@@ -91,6 +103,9 @@ ESaveDataType UCustomSaveGame::GetKeyType(FName _key) const
 
 void UCustomSaveGame::ClearData()
 {
+	if (CanModifySaveGameData(NAME_None) == false)
+		return;
+
 	_KeyTypeMap.Empty();
 
 	_BoolDataMap.Empty();
@@ -110,6 +125,9 @@ bool UCustomSaveGame::IsEmpty() const
 
 bool UCustomSaveGame::SaveBoolData(FName _key, bool _value)
 {
+	if (CanModifySaveGameData(_key) == false)
+		return false;
+
 	if (CanSetKey(_key, ESaveDataType::Bool) == false)
 	{
 		TRACE_WARNING(TEXT("저장 실패! Key : %s"), *_key.ToString());
@@ -145,6 +163,9 @@ bool UCustomSaveGame::FindSavedBoolData(FName _key, bool& _out_value) const
 
 bool UCustomSaveGame::SaveIntData(FName _key, int32 _value)
 {
+	if (CanModifySaveGameData(_key) == false)
+		return false;
+
 	if (CanSetKey(_key, ESaveDataType::Int) == false)
 	{
 		TRACE_WARNING(TEXT("저장 실패! Key : %s"), *_key.ToString());
@@ -180,6 +201,9 @@ bool UCustomSaveGame::FindSavedIntData(FName _key, int32& _out_value) const
 
 bool UCustomSaveGame::SaveFloatData(FName _key, float _value)
 {
+	if (CanModifySaveGameData(_key) == false)
+		return false;
+
 	if (CanSetKey(_key, ESaveDataType::Float) == false)
 	{
 		TRACE_WARNING(TEXT("저장 실패! Key : %s"), *_key.ToString());
@@ -215,6 +239,9 @@ bool UCustomSaveGame::FindSavedFloatData(FName _key, float& _out_value) const
 
 bool UCustomSaveGame::SaveStringData(FName _key, const FString& _value)
 {
+	if (CanModifySaveGameData(_key) == false)
+		return false;
+
 	if (CanSetKey(_key, ESaveDataType::String) == false)
 	{
 		TRACE_WARNING(TEXT("저장 실패! Key : %s"), *_key.ToString());

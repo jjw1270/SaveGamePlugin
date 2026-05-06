@@ -8,8 +8,11 @@
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "SaveGameSubsystem.generated.h"
 
-DECLARE_DYNAMIC_DELEGATE_OneParam(FD_OnLoadGameFinished, bool, _load_success);
-DECLARE_DYNAMIC_DELEGATE_OneParam(FD_OnSaveGameFinished, bool, _save_success);
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FDM_OnAsyncLoadGameStarted);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDM_OnAsyncLoadGameFinished, bool, _load_success);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FDM_OnAsyncSaveGameStarted);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDM_OnAsyncSaveGameFinished, bool, _save_success);
 
 /*
  * 오직 하나의 슬롯만 존재.
@@ -29,6 +32,25 @@ protected:
 	UPROPERTY()
 	bool _IsAsyncSaving = false;
 
+	UPROPERTY()
+	bool _IsAsyncLoading = false;
+
+protected:
+	void SetSaveGameCanModify(bool _can_modify);
+
+public:
+	UPROPERTY(BlueprintAssignable, Category = "SaveGame|Event")
+	FDM_OnAsyncLoadGameStarted OnAsyncLoadGameStarted;
+
+	UPROPERTY(BlueprintAssignable, Category = "SaveGame|Event")
+	FDM_OnAsyncLoadGameFinished OnAsyncLoadGameFinished;
+
+	UPROPERTY(BlueprintAssignable, Category = "SaveGame|Event")
+	FDM_OnAsyncSaveGameStarted OnAsyncSaveGameStarted;
+
+	UPROPERTY(BlueprintAssignable, Category = "SaveGame|Event")
+	FDM_OnAsyncSaveGameFinished OnAsyncSaveGameFinished;
+
 public:
 	virtual void Initialize(FSubsystemCollectionBase& _collection) override;
 
@@ -37,18 +59,27 @@ public:
 	bool LoadGame();
 	
 	UFUNCTION(BlueprintCallable, Category = "SaveGame")
-	void AsyncLoadGame(FD_OnLoadGameFinished _on_load_game_finished_event);
+	void AsyncLoadGame();
 
 	UFUNCTION(BlueprintCallable, Category = "SaveGame")
 	bool SaveGame();
 
 	UFUNCTION(BlueprintCallable, Category = "SaveGame")
-	void AsyncSaveGame(FD_OnSaveGameFinished _on_save_game_finished_event);
+	void AsyncSaveGame();
 
 	UFUNCTION(BlueprintCallable, Category = "SaveGame")
 	void ResetGame();
 
 public:
+	UFUNCTION(BlueprintPure, Category = "SaveGame")
+	bool IsAsyncLoading() const { return _IsAsyncLoading; }
+
+	UFUNCTION(BlueprintPure, Category = "SaveGame")
+	bool IsAsyncSaving() const { return _IsAsyncSaving; }
+
+	UFUNCTION(BlueprintPure, Category = "SaveGame")
+	bool CanModifySaveGame() const { return _IsAsyncLoading == false && _IsAsyncSaving == false; }
+
 	UFUNCTION(BlueprintPure, Category = "SaveGame")
 	UCustomSaveGame* GetSaveGame() const { return _SaveGame; }
 

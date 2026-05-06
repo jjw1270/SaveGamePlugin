@@ -30,6 +30,9 @@ private:
 	UPROPERTY()
 	TMap<FName, ESaveDataType> _KeyTypeMap;
 
+	UPROPERTY(Transient)
+	bool _CanModify = true;
+
 protected:
 	UPROPERTY()
 	TMap<FName, bool> _BoolDataMap;
@@ -44,11 +47,15 @@ protected:
 	TMap<FName, FString> _StringDataMap;
 
 protected:
+	bool CanModifySaveGameData(FName _key) const;
 	bool CanSetKey(FName _key, ESaveDataType _target_type) const;
 	void RegisterKeyType(FName _key, ESaveDataType _type);
 	void UnregisterKeyTypeIfUnused(FName _key);
 
 public:
+	void SetCanModify(bool _can_modify) { _CanModify = _can_modify; }
+	bool CanModify() const { return _CanModify; }
+
 	bool RemoveKey(FName _key);
 	bool ContainsKey(FName _key) const;
 	ESaveDataType GetKeyType(FName _key) const;
