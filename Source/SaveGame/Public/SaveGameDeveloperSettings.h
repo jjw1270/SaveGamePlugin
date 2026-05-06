@@ -18,4 +18,7 @@ public:
 
 	UPROPERTY(EditAnywhere, Config, Category = "SaveGame")
 	FString _SaveGameSlotName = TEXT("SaveGameSlot");
+
+	UPROPERTY(EditAnywhere, Config, Category = "SaveGame")
+	TSubclassOf<class UWidgetBase> _AsyncSaveGameWidgetClass = nullptr;
 };

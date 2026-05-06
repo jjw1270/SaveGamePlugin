@@ -29,6 +29,7 @@ public class SaveGame : ModuleRules
                 "CoreUObject",
                 "Engine",
                 "DeveloperSettings",
+				"CustomUI"
             }
             );
 			
@@ -38,6 +39,7 @@ public class SaveGame : ModuleRules
 			{
                 "Slate",
                 "SlateCore",
+				"UMG",
                 "CommonLibrary",
             }
 			);

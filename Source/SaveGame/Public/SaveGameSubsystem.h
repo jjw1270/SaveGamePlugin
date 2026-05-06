@@ -9,6 +9,7 @@
 #include "SaveGameSubsystem.generated.h"
 
 DECLARE_DYNAMIC_DELEGATE_OneParam(FD_OnLoadGameFinished, bool, _load_success);
+DECLARE_DYNAMIC_DELEGATE_OneParam(FD_OnSaveGameFinished, bool, _save_success);
 
 /*
  * 오직 하나의 슬롯만 존재.
@@ -22,6 +23,9 @@ protected:
 	UPROPERTY()
 	TObjectPtr<UCustomSaveGame> _SaveGame = nullptr;
 
+	UPROPERTY()
+	TObjectPtr<class UWidgetBase> _AsyncSaveGameWidget = nullptr;
+
 public:
 	UFUNCTION(BlueprintCallable, Category = "SaveGame")
 	bool LoadGame();
@@ -31,6 +35,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "SaveGame")
 	bool SaveGame();
+
+	UFUNCTION(BlueprintCallable, Category = "SaveGame")
+	void AsyncSaveGame(FD_OnSaveGameFinished _on_save_game_finished_event);
 
 	UFUNCTION(BlueprintCallable, Category = "SaveGame")
 	void ResetGame();

@@ -5,7 +5,7 @@
 #include "CommonUtils.h"
 #include "Kismet/GameplayStatics.h"
 #include "SaveGameDeveloperSettings.h"
-
+#include "WidgetBase.h"
 
 
 bool USaveGameSubsystem::LoadGame()
@@ -55,6 +55,51 @@ bool USaveGameSubsystem::SaveGame()
 		return false;
 
 	return UGameplayStatics::SaveGameToSlot(_SaveGame, settings->_SaveGameSlotName, 0);
+}
+
+void USaveGameSubsystem::AsyncSaveGame(FD_OnSaveGameFinished _on_save_game_finished_event)
+{
+	if (IsInvalid(_SaveGame))
+	{
+		TRACE_ERROR(TEXT("SaveGame Is Invalid"));
+		return;
+	}
+
+	const auto settings = GetDefault<USaveGameDeveloperSettings>();
+	if (IsInvalid(settings))
+		return;
+
+	if (IsInvalid(_AsyncSaveGameWidget))
+	{
+		if (IsValid(settings->_AsyncSaveGameWidgetClass))
+		{
+			_AsyncSaveGameWidget = CreateWidget<UWidgetBase>(GetGameInstance(), settings->_AsyncSaveGameWidgetClass);
+		}
+		else
+		{
+			TRACE_WARNING(TEXT("Save Game Dev setting : _AsyncSaveGameWidgetClass is invalid."));
+		}
+	}
+
+	if (IsValid(_AsyncSaveGameWidget))
+	{
+		// 최상단에 와야 함!
+		_AsyncSaveGameWidget->AddToViewport(999);
+	}
+
+	return UGameplayStatics::AsyncSaveGameToSlot(_SaveGame, settings->_SaveGameSlotName, 0,
+		FAsyncSaveGameToSlotDelegate::CreateWeakLambda(this,
+			[this, _on_save_game_finished_event](const FString& _slot_name, const int32 _user_index, bool _is_success)
+			{
+				_on_save_game_finished_event.ExecuteIfBound(_is_success);
+
+				if (IsValid(_AsyncSaveGameWidget))
+				{
+					_AsyncSaveGameWidget->RemoveFromParent();
+				}
+			}
+		)
+	);
 }
 
 void USaveGameSubsystem::ResetGame()
