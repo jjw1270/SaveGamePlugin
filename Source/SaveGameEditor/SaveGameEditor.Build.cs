@@ -42,6 +42,7 @@ public class SaveGameEditor : ModuleRules
                 "UnrealEd",
                 "ToolMenus",
                 "Projects",
+                "MessageLog",
             }
             );
 		
