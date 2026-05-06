@@ -19,7 +19,18 @@ void USaveGameSubsystem::Initialize(FSubsystemCollectionBase& _collection)
 		return;
 	}
 
-	_SaveGame = Cast<UCustomSaveGame>(UGameplayStatics::CreateSaveGameObject(settings->_SaveGameClass.LoadSynchronous()));
+	UClass* save_game_class = settings->_SaveGameClass.LoadSynchronous();
+	if (IsInvalid(save_game_class))
+	{
+		TRACE_ERROR(TEXT("SaveGame Class Load Failed"));
+		return;
+	}
+
+	_SaveGame = Cast<UCustomSaveGame>(UGameplayStatics::CreateSaveGameObject(save_game_class));
+	if (IsInvalid(_SaveGame))
+	{
+		TRACE_ERROR(TEXT("SaveGame Create Failed"));
+	}
 }
 
 bool USaveGameSubsystem::LoadGame()
@@ -48,6 +59,7 @@ void USaveGameSubsystem::AsyncLoadGame(FD_OnLoadGameFinished _on_load_game_finis
 	if (IsInvalid(settings))
 	{
 		TRACE_ERROR(TEXT("SaveGame Dev Setting Error"));
+		_on_load_game_finished_event.ExecuteIfBound(false);
 		return;
 	}
 
