@@ -40,16 +40,16 @@ protected:
 
 public:
 	UPROPERTY(BlueprintAssignable, Category = "SaveGame|Event")
-	FDM_OnAsyncLoadGameStarted OnAsyncLoadGameStarted;
+	FDM_OnAsyncLoadGameStarted _OnAsyncLoadGameStarted;
 
 	UPROPERTY(BlueprintAssignable, Category = "SaveGame|Event")
-	FDM_OnAsyncLoadGameFinished OnAsyncLoadGameFinished;
+	FDM_OnAsyncLoadGameFinished _OnAsyncLoadGameFinished;
 
 	UPROPERTY(BlueprintAssignable, Category = "SaveGame|Event")
-	FDM_OnAsyncSaveGameStarted OnAsyncSaveGameStarted;
+	FDM_OnAsyncSaveGameStarted _OnAsyncSaveGameStarted;
 
 	UPROPERTY(BlueprintAssignable, Category = "SaveGame|Event")
-	FDM_OnAsyncSaveGameFinished OnAsyncSaveGameFinished;
+	FDM_OnAsyncSaveGameFinished _OnAsyncSaveGameFinished;
 
 public:
 	virtual void Initialize(FSubsystemCollectionBase& _collection) override;

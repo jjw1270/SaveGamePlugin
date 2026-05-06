@@ -67,27 +67,27 @@ void USaveGameSubsystem::AsyncLoadGame()
 	if (IsInvalid(settings))
 	{
 		TRACE_ERROR(TEXT("SaveGame Dev Setting Error"));
-		OnAsyncLoadGameFinished.Broadcast(false);
+		_OnAsyncLoadGameFinished.Broadcast(false);
 		return;
 	}
 
 	if (_IsAsyncLoading)
 	{
 		TRACE_WARNING(TEXT("SaveGame is already loading."));
-		OnAsyncLoadGameFinished.Broadcast(false);
+		_OnAsyncLoadGameFinished.Broadcast(false);
 		return;
 	}
 
 	if (_IsAsyncSaving)
 	{
 		TRACE_WARNING(TEXT("SaveGame is already saving."));
-		OnAsyncLoadGameFinished.Broadcast(false);
+		_OnAsyncLoadGameFinished.Broadcast(false);
 		return;
 	}
 
 	_IsAsyncLoading = true;
 	SetSaveGameCanModify(false);
-	OnAsyncLoadGameStarted.Broadcast();
+	_OnAsyncLoadGameStarted.Broadcast();
 
 	UGameplayStatics::AsyncLoadGameFromSlot(settings->_SaveGameSlotName, 0, 
 		FAsyncLoadGameFromSlotDelegate::CreateWeakLambda(this,
@@ -104,7 +104,7 @@ void USaveGameSubsystem::AsyncLoadGame()
 				_IsAsyncLoading = false;
 				SetSaveGameCanModify(true);
 
-				OnAsyncLoadGameFinished.Broadcast(load_success);
+				_OnAsyncLoadGameFinished.Broadcast(load_success);
 			}
 		)
 	);
@@ -130,34 +130,34 @@ void USaveGameSubsystem::AsyncSaveGame()
 	if (IsInvalid(_SaveGame))
 	{
 		TRACE_ERROR(TEXT("SaveGame Is Invalid"));
-		OnAsyncSaveGameFinished.Broadcast(false);
+		_OnAsyncSaveGameFinished.Broadcast(false);
 		return;
 	}
 
 	const auto settings = GetDefault<USaveGameDeveloperSettings>();
 	if (IsInvalid(settings))
 	{
-		OnAsyncSaveGameFinished.Broadcast(false);
+		_OnAsyncSaveGameFinished.Broadcast(false);
 		return;
 	}
 
 	if (_IsAsyncSaving)
 	{
 		TRACE_WARNING(TEXT("SaveGame is already saving."));
-		OnAsyncSaveGameFinished.Broadcast(false);
+		_OnAsyncSaveGameFinished.Broadcast(false);
 		return;
 	}
 
 	if (_IsAsyncLoading)
 	{
 		TRACE_WARNING(TEXT("SaveGame is already loading."));
-		OnAsyncSaveGameFinished.Broadcast(false);
+		_OnAsyncSaveGameFinished.Broadcast(false);
 		return;
 	}
 
 	_IsAsyncSaving = true;
 	SetSaveGameCanModify(false);
-	OnAsyncSaveGameStarted.Broadcast();
+	_OnAsyncSaveGameStarted.Broadcast();
 
 	if (IsInvalid(_AsyncSaveGameWidget))
 	{
@@ -189,7 +189,7 @@ void USaveGameSubsystem::AsyncSaveGame()
 					_AsyncSaveGameWidget->RemoveFromParent();
 				}
 
-				OnAsyncSaveGameFinished.Broadcast(_is_success);
+				_OnAsyncSaveGameFinished.Broadcast(_is_success);
 			}
 		)
 	);
