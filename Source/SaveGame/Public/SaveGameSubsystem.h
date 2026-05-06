@@ -30,6 +30,9 @@ protected:
 	bool _IsAsyncSaving = false;
 
 public:
+	virtual void Initialize(FSubsystemCollectionBase& _collection) override;
+
+public:
 	UFUNCTION(BlueprintCallable, Category = "SaveGame")
 	bool LoadGame();
 	

@@ -8,24 +8,44 @@
 #include "Widgets/WidgetBase.h"
 
 
+void USaveGameSubsystem::Initialize(FSubsystemCollectionBase& _collection)
+{
+	Super::Initialize(_collection);
+
+	const auto settings = GetDefault<USaveGameDeveloperSettings>();
+	if (IsInvalid(settings) || settings->_SaveGameClass.IsNull())
+	{
+		TRACE_ERROR(TEXT("SaveGame Dev Setting Error"));
+		return;
+	}
+
+	_SaveGame = Cast<UCustomSaveGame>(UGameplayStatics::CreateSaveGameObject(settings->_SaveGameClass.LoadSynchronous()));
+}
+
 bool USaveGameSubsystem::LoadGame()
 {
 	const auto settings = GetDefault<USaveGameDeveloperSettings>();
-	if (IsInvalid(settings) || settings->_SaveGameClass.IsNull())
+	if (IsInvalid(settings))
 	{
 		TRACE_ERROR(TEXT("SaveGame Dev Setting Error"));
 		return false;
 	}
 
-	_SaveGame = Cast<UCustomSaveGame>(UGameplayStatics::LoadGameFromSlot(settings->_SaveGameSlotName, 0));
+	auto loaded_save_game = Cast<UCustomSaveGame>(UGameplayStatics::LoadGameFromSlot(settings->_SaveGameSlotName, 0));
+	
+	const bool load_success = IsValid(loaded_save_game);
+	if (load_success)
+	{
+		_SaveGame = loaded_save_game;
+	}
 
-	return IsValid(_SaveGame);
+	return load_success;
 }
 
 void USaveGameSubsystem::AsyncLoadGame(FD_OnLoadGameFinished _on_load_game_finished_event)
 {
 	const auto settings = GetDefault<USaveGameDeveloperSettings>();
-	if (IsInvalid(settings) || settings->_SaveGameClass.IsNull())
+	if (IsInvalid(settings))
 	{
 		TRACE_ERROR(TEXT("SaveGame Dev Setting Error"));
 		return;
@@ -35,8 +55,15 @@ void USaveGameSubsystem::AsyncLoadGame(FD_OnLoadGameFinished _on_load_game_finis
 		FAsyncLoadGameFromSlotDelegate::CreateWeakLambda(this,
 			[this, _on_load_game_finished_event](const FString& _slot_name, const int32 _user_index, USaveGame* _save_game)
 			{
-				_SaveGame = Cast<UCustomSaveGame>(_save_game);
-				_on_load_game_finished_event.ExecuteIfBound(IsValid(_SaveGame));
+				auto loaded_save_game = Cast<UCustomSaveGame>(_save_game);
+
+				const bool load_success = IsValid(loaded_save_game);
+				if (load_success)
+				{
+					_SaveGame = loaded_save_game;
+				}
+
+				_on_load_game_finished_event.ExecuteIfBound(load_success);
 			}
 		)
 	);
