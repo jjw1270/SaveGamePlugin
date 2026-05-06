@@ -30,6 +30,10 @@
 		{
 			"Name": "CommonLibrary",
 			"Enabled": true
+		},
+		{
+			"Name": "CustomUI",
+			"Enabled": true
 		}
 	]
 }

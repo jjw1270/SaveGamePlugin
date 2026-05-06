@@ -5,7 +5,7 @@
 #include "CommonUtils.h"
 #include "Kismet/GameplayStatics.h"
 #include "SaveGameDeveloperSettings.h"
-#include "WidgetBase.h"
+#include "Widgets/WidgetBase.h"
 
 
 bool USaveGameSubsystem::LoadGame()
@@ -62,12 +62,25 @@ void USaveGameSubsystem::AsyncSaveGame(FD_OnSaveGameFinished _on_save_game_finis
 	if (IsInvalid(_SaveGame))
 	{
 		TRACE_ERROR(TEXT("SaveGame Is Invalid"));
+		_on_save_game_finished_event.ExecuteIfBound(false);
 		return;
 	}
 
 	const auto settings = GetDefault<USaveGameDeveloperSettings>();
 	if (IsInvalid(settings))
+	{
+		_on_save_game_finished_event.ExecuteIfBound(false);
 		return;
+	}
+
+	if (_IsAsyncSaving)
+	{
+		TRACE_WARNING(TEXT("SaveGame is already saving."));
+		_on_save_game_finished_event.ExecuteIfBound(false);
+		return;
+	}
+
+	_IsAsyncSaving = true;
 
 	if (IsInvalid(_AsyncSaveGameWidget))
 	{
@@ -91,12 +104,14 @@ void USaveGameSubsystem::AsyncSaveGame(FD_OnSaveGameFinished _on_save_game_finis
 		FAsyncSaveGameToSlotDelegate::CreateWeakLambda(this,
 			[this, _on_save_game_finished_event](const FString& _slot_name, const int32 _user_index, bool _is_success)
 			{
-				_on_save_game_finished_event.ExecuteIfBound(_is_success);
+				_IsAsyncSaving = false;
 
 				if (IsValid(_AsyncSaveGameWidget))
 				{
 					_AsyncSaveGameWidget->RemoveFromParent();
 				}
+
+				_on_save_game_finished_event.ExecuteIfBound(_is_success);
 			}
 		)
 	);

@@ -26,6 +26,9 @@ protected:
 	UPROPERTY()
 	TObjectPtr<class UWidgetBase> _AsyncSaveGameWidget = nullptr;
 
+	UPROPERTY()
+	bool _IsAsyncSaving = false;
+
 public:
 	UFUNCTION(BlueprintCallable, Category = "SaveGame")
 	bool LoadGame();
