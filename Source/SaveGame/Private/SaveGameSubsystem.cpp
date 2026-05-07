@@ -12,6 +12,8 @@ void USaveGameSubsystem::Initialize(FSubsystemCollectionBase& _collection)
 {
 	Super::Initialize(_collection);
 
+	_IsDeinitializing = false;
+
 	const auto settings = GetDefault<USaveGameDeveloperSettings>();
 	if (IsInvalid(settings) || settings->_SaveGameClass.IsNull())
 	{
@@ -33,6 +35,24 @@ void USaveGameSubsystem::Initialize(FSubsystemCollectionBase& _collection)
 	}
 }
 
+void USaveGameSubsystem::Deinitialize()
+{
+	_IsDeinitializing = true;
+
+	SetSaveGameCanModify(true);
+
+	_IsAsyncSaving = false;
+	_IsAsyncLoading = false;
+
+	if (IsValid(_AsyncSaveGameWidget))
+	{
+		_AsyncSaveGameWidget->RemoveFromParent();
+		_AsyncSaveGameWidget = nullptr;
+	}
+
+	Super::Deinitialize();
+}
+
 void USaveGameSubsystem::SetSaveGameCanModify(bool _can_modify)
 {
 	if (IsValid(_SaveGame))
@@ -43,6 +63,12 @@ void USaveGameSubsystem::SetSaveGameCanModify(bool _can_modify)
 
 bool USaveGameSubsystem::LoadGame()
 {
+	if (_IsAsyncSaving || _IsAsyncLoading)
+	{
+		TRACE_WARNING(TEXT("Async save/load is in progress."));
+		return false;
+	}
+
 	const auto settings = GetDefault<USaveGameDeveloperSettings>();
 	if (IsInvalid(settings))
 	{
@@ -93,6 +119,9 @@ void USaveGameSubsystem::AsyncLoadGame()
 		FAsyncLoadGameFromSlotDelegate::CreateWeakLambda(this,
 			[this](const FString& _slot_name, const int32 _user_index, USaveGame* _save_game)
 			{
+				if (_IsDeinitializing)
+					return;
+
 				auto loaded_save_game = Cast<UCustomSaveGame>(_save_game);
 
 				const bool load_success = IsValid(loaded_save_game);
@@ -112,6 +141,12 @@ void USaveGameSubsystem::AsyncLoadGame()
 
 bool USaveGameSubsystem::SaveGame()
 {
+	if (_IsAsyncSaving || _IsAsyncLoading)
+	{
+		TRACE_WARNING(TEXT("Async save/load is in progress."));
+		return false;
+	}
+
 	if (IsInvalid(_SaveGame))
 	{
 		TRACE_ERROR(TEXT("SaveGame Is Invalid"));
@@ -181,6 +216,9 @@ void USaveGameSubsystem::AsyncSaveGame()
 		FAsyncSaveGameToSlotDelegate::CreateWeakLambda(this,
 			[this](const FString& _slot_name, const int32 _user_index, bool _is_success)
 			{
+				if (_IsDeinitializing)
+					return;
+
 				_IsAsyncSaving = false;
 				SetSaveGameCanModify(true);
 
@@ -197,6 +235,12 @@ void USaveGameSubsystem::AsyncSaveGame()
 
 void USaveGameSubsystem::ResetGame()
 {
+	if (_IsAsyncSaving || _IsAsyncLoading)
+	{
+		TRACE_WARNING(TEXT("Async save/load is in progress."));
+		return;
+	}
+
 	if (IsInvalid(_SaveGame))
 	{
 		TRACE_ERROR(TEXT("SaveGame Is Invalid"));

@@ -15,7 +15,7 @@ private:
 	bool _IsMenuRegistered = false;
 
 	void RegisterMenus();
-	void AddSaveGameMenuEntry();
+	void AddDeleteSaveSlotMenuEntry();
 
-	void OnClicked_ResetGame();
+	void OnClicked_DeleteSaveSlot();
 };

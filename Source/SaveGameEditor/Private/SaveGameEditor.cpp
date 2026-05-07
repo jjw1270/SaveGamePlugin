@@ -43,28 +43,28 @@ void FSaveGameEditorModule::RegisterMenus()
 	if (_IsMenuRegistered)
 		return;
 
-	AddSaveGameMenuEntry();
+	AddDeleteSaveSlotMenuEntry();
 	_IsMenuRegistered = true;
 }
 
-void FSaveGameEditorModule::AddSaveGameMenuEntry()
+void FSaveGameEditorModule::AddDeleteSaveSlotMenuEntry()
 {
 	UToolMenu* toolbar_menu = UToolMenus::Get()->ExtendMenu(TEXT("LevelEditor.LevelEditorToolBar.User"));
 	if (IsInvalid(toolbar_menu))
 		return;
 
-	FToolMenuSection& section = toolbar_menu->FindOrAddSection(TEXT("ResetGame"));
+	FToolMenuSection& section = toolbar_menu->FindOrAddSection(TEXT("DeleteSaveSlot"));
 
 	section.AddEntry(FToolMenuEntry::InitToolBarButton(
-		TEXT("ResetGame"),
-		FUIAction(FExecuteAction::CreateRaw(this, &FSaveGameEditorModule::OnClicked_ResetGame)),
-		LOCTEXT("ResetGame_Label", "Reset Game"),
-		LOCTEXT("ResetGame_ToolTip", "Reset Game."),
-		FSlateIcon(FSaveGameEditorStyle::GetStyleSetName(), "SaveGame.Reset")
+		TEXT("DeleteSaveSlot"),
+		FUIAction(FExecuteAction::CreateRaw(this, &FSaveGameEditorModule::OnClicked_DeleteSaveSlot)),
+		LOCTEXT("DeleteSaveSlot_Label", "Delete Save Slot"),
+		LOCTEXT("DeleteSaveSlot_ToolTip", "Delete Save Slot."),
+		FSlateIcon(FSaveGameEditorStyle::GetStyleSetName(), "SaveGame.DeleteSaveSlot")
 	));
 }
 
-void FSaveGameEditorModule::OnClicked_ResetGame()
+void FSaveGameEditorModule::OnClicked_DeleteSaveSlot()
 {
 	const auto settings = GetDefault<USaveGameDeveloperSettings>();
 	if (IsInvalid(settings))

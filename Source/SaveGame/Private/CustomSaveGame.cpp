@@ -17,7 +17,7 @@ bool UCustomSaveGame::CanSetKey(FName _key, ESaveDataType _target_type) const
 
 bool UCustomSaveGame::CanModifySaveGameData(FName _key) const
 {
-	if (_CanModify)
+	if (CanModify())
 		return true;
 
 	TRACE_WARNING(TEXT("SaveGame 수정 불가 상태입니다. Key : %s"), *_key.ToString());
@@ -103,7 +103,7 @@ ESaveDataType UCustomSaveGame::GetKeyType(FName _key) const
 
 void UCustomSaveGame::ClearData()
 {
-	if (CanModifySaveGameData(NAME_None) == false)
+	if (CanModify() == false)
 		return;
 
 	_KeyTypeMap.Empty();

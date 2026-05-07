@@ -67,6 +67,12 @@ public:
 	UFUNCTION(BlueprintPure, Category = "SaveGame")
 	virtual bool IsEmpty() const;
 
+	/*
+	 * Find 정책:
+	 * - 저장된 값이 있으면 true를 반환하고 _out_value를 갱신한다.
+	 * - 키 없음/타입 불일치/데이터 없음이면 false를 반환하고 _out_value는 변경하지 않는다.
+	 * - 호출자는 필요하면 호출 전에 기본값을 세팅해야 한다.
+	 */
 	UFUNCTION(BlueprintCallable, Category = "SaveGame")
 	bool SaveBoolData(FName _key, bool _value);
 	UFUNCTION(BlueprintPure, Category = "SaveGame")

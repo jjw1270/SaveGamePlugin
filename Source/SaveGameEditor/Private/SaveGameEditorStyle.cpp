@@ -25,7 +25,7 @@ void FSaveGameEditorStyle::Initialize()
 	}
 
 	const FVector2D icon40(40.f, 40.f);
-	_StyleSet->Set("SaveGame.Reset", new IMAGE_BRUSH("ResetGame_40", icon40));
+	_StyleSet->Set("SaveGame.DeleteSaveSlot", new IMAGE_BRUSH("DeleteSaveSlot_40", icon40));
 
 	FSlateStyleRegistry::RegisterSlateStyle(*_StyleSet.Get());
 }

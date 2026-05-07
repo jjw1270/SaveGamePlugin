@@ -35,6 +35,9 @@ protected:
 	UPROPERTY()
 	bool _IsAsyncLoading = false;
 
+	UPROPERTY(Transient)
+	bool _IsDeinitializing = false;
+
 protected:
 	void SetSaveGameCanModify(bool _can_modify);
 
@@ -53,8 +56,15 @@ public:
 
 public:
 	virtual void Initialize(FSubsystemCollectionBase& _collection) override;
+	virtual void Deinitialize() override;
 
 public:
+	/*
+	 * Load 정책:
+	 * - 로드 성공 시 현재 메모리 SaveGame을 로드된 객체로 교체한다.
+	 * - 로드 실패(슬롯 없음, 클래스 불일치, 파일 손상 등) 시 기존 메모리 SaveGame은 유지한다.
+	 * - 호출자는 반환값 또는 완료 델리게이트로 실패를 판단하고 신규 게임/재시도/UI 갱신을 결정한다.
+	 */
 	UFUNCTION(BlueprintCallable, Category = "SaveGame")
 	bool LoadGame();
 	
@@ -67,6 +77,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "SaveGame")
 	void AsyncSaveGame();
 
+	/*
+	 * 현재 메모리 SaveGame 데이터만 초기화한다.
+	 * 디스크 슬롯에 반영하려면 ResetGame() 이후 SaveGame()을 호출해야 한다.
+	 * 슬롯 파일 자체를 삭제하려면 에디터 툴바의 Delete Save Slot 또는 DeleteGameInSlot을 사용한다.
+	 */
 	UFUNCTION(BlueprintCallable, Category = "SaveGame")
 	void ResetGame();
 
