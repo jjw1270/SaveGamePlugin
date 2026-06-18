@@ -62,6 +62,11 @@ bool USaveGameSubsystem::SaveSaveGameSlotRegistry() const
 	return SaveConfiguredSaveGameSlotRegistry(_SaveGameSlotRegistry);
 }
 
+bool USaveGameSubsystem::IsInConfiguredSaveGameSlotRange(int32 _slot_index)
+{
+	return _slot_index >= 0 && _slot_index < GetConfiguredMaxSaveGameSlotCount();
+}
+
 void USaveGameSubsystem::Deinitialize()
 {
 	_IsDeinitializing = true;
@@ -97,6 +102,17 @@ FString USaveGameSubsystem::GetConfiguredSaveGameSlotNamePrefix()
 	}
 
 	return settings->_SaveGameSlotName;
+}
+
+int32 USaveGameSubsystem::GetConfiguredMaxSaveGameSlotCount()
+{
+	const auto settings = GetDefault<USaveGameDeveloperSettings>();
+	if (IsInvalid(settings))
+	{
+		return 1;
+	}
+
+	return FMath::Max(1, settings->_MaxSaveGameSlotCount);
 }
 
 FString USaveGameSubsystem::MakeConfiguredSaveGameSlotName(int32 _slot_index)
@@ -150,24 +166,22 @@ int32 USaveGameSubsystem::AllocateSaveGameSlotIndex()
 		return INDEX_NONE;
 	}
 
-	int32 new_slot_index = FMath::Max(0, _SaveGameSlotRegistry->_LastSaveGameSlotIndex) + 1;
-	while (_SaveGameSlotRegistry->_SaveGameSlotMap.Contains(new_slot_index))
+	for (int32 new_slot_index = 0; new_slot_index < GetConfiguredMaxSaveGameSlotCount(); ++new_slot_index)
 	{
-		++new_slot_index;
+		if (_SaveGameSlotRegistry->_SaveGameSlotMap.Contains(new_slot_index))
+			continue;
+
+		_SaveGameSlotRegistry->_LastSaveGameSlotIndex = new_slot_index;
+		return new_slot_index;
 	}
 
-	_SaveGameSlotRegistry->_LastSaveGameSlotIndex = new_slot_index;
-	return new_slot_index;
+	TRACE_WARNING(TEXT("SaveGame Slot Count Limit Exceeded : %d"), GetConfiguredMaxSaveGameSlotCount());
+	return INDEX_NONE;
 }
 
 int32 USaveGameSubsystem::GetSaveGameSlotCount() const
 {
-	if (IsInvalid(_SaveGameSlotRegistry))
-	{
-		return 0;
-	}
-
-	return _SaveGameSlotRegistry->_SaveGameSlotMap.Num();
+	return GetSaveGameSlotIndices().Num();
 }
 
 TArray<int32> USaveGameSubsystem::GetSaveGameSlotIndices() const
@@ -176,6 +190,10 @@ TArray<int32> USaveGameSubsystem::GetSaveGameSlotIndices() const
 	if (IsValid(_SaveGameSlotRegistry))
 	{
 		_SaveGameSlotRegistry->_SaveGameSlotMap.GetKeys(slot_indices);
+		slot_indices.RemoveAll([](int32 _slot_index)
+		{
+			return USaveGameSubsystem::IsInConfiguredSaveGameSlotRange(_slot_index) == false;
+		});
 		slot_indices.Sort();
 	}
 
@@ -194,7 +212,9 @@ FString USaveGameSubsystem::GetSaveGameSlotName(int32 _slot_index) const
 
 bool USaveGameSubsystem::IsValidSaveGameSlotIndex(int32 _slot_index) const
 {
-	return IsValid(_SaveGameSlotRegistry) && _SaveGameSlotRegistry->_SaveGameSlotMap.Contains(_slot_index);
+	return IsInConfiguredSaveGameSlotRange(_slot_index)
+		&& IsValid(_SaveGameSlotRegistry)
+		&& _SaveGameSlotRegistry->_SaveGameSlotMap.Contains(_slot_index);
 }
 
 bool USaveGameSubsystem::DoesSaveGameExist(int32 _slot_index) const
@@ -205,9 +225,20 @@ bool USaveGameSubsystem::DoesSaveGameExist(int32 _slot_index) const
 	return UGameplayStatics::DoesSaveGameExist(MakeSaveGameSlotName(_slot_index), 0);
 }
 
-bool USaveGameSubsystem::LoadGame()
+UCustomSaveGame* USaveGameSubsystem::GetSaveGameFromSlot(int32 _slot_index) const
 {
-	return LoadGameSlot(_ActiveSaveGameSlotIndex);
+	if (IsValidSaveGameSlotIndex(_slot_index) == false)
+	{
+		TRACE_WARNING(TEXT("Invalid SaveGame Slot Index : %d"), _slot_index);
+		return nullptr;
+	}
+
+	if (_ActiveSaveGameSlotIndex == _slot_index && IsValid(_SaveGame))
+	{
+		return _SaveGame;
+	}
+
+	return Cast<UCustomSaveGame>(UGameplayStatics::LoadGameFromSlot(MakeSaveGameSlotName(_slot_index), 0));
 }
 
 bool USaveGameSubsystem::LoadGameSlot(int32 _slot_index)
@@ -235,11 +266,6 @@ bool USaveGameSubsystem::LoadGameSlot(int32 _slot_index)
 	}
 
 	return load_success;
-}
-
-void USaveGameSubsystem::AsyncLoadGame()
-{
-	AsyncLoadGameSlot(_ActiveSaveGameSlotIndex);
 }
 
 void USaveGameSubsystem::AsyncLoadGameSlot(int32 _slot_index)
@@ -300,7 +326,7 @@ void USaveGameSubsystem::AsyncLoadGameSlot(int32 _slot_index)
 	);
 }
 
-bool USaveGameSubsystem::SaveGame()
+bool USaveGameSubsystem::SaveGameSlot(int32 _slot_index)
 {
 	if (_IsAsyncSaving || _IsAsyncLoading)
 	{
@@ -314,16 +340,22 @@ bool USaveGameSubsystem::SaveGame()
 		return false;
 	}
 
-	if (IsValidSaveGameSlotIndex(_ActiveSaveGameSlotIndex) == false)
+	if (IsValidSaveGameSlotIndex(_slot_index) == false)
 	{
-		TRACE_WARNING(TEXT("Invalid SaveGame Slot Index : %d"), _ActiveSaveGameSlotIndex);
+		TRACE_WARNING(TEXT("Invalid SaveGame Slot Index : %d"), _slot_index);
 		return false;
 	}
 
-	return UGameplayStatics::SaveGameToSlot(_SaveGame, MakeSaveGameSlotName(_ActiveSaveGameSlotIndex), 0);
+	const bool save_success = UGameplayStatics::SaveGameToSlot(_SaveGame, MakeSaveGameSlotName(_slot_index), 0);
+	if (save_success)
+	{
+		_ActiveSaveGameSlotIndex = _slot_index;
+	}
+
+	return save_success;
 }
 
-void USaveGameSubsystem::AsyncSaveGame()
+void USaveGameSubsystem::AsyncSaveGameSlot(int32 _slot_index)
 {
 	if (IsInvalid(_SaveGame))
 	{
@@ -339,9 +371,9 @@ void USaveGameSubsystem::AsyncSaveGame()
 		return;
 	}
 
-	if (IsValidSaveGameSlotIndex(_ActiveSaveGameSlotIndex) == false)
+	if (IsValidSaveGameSlotIndex(_slot_index) == false)
 	{
-		TRACE_WARNING(TEXT("Invalid SaveGame Slot Index : %d"), _ActiveSaveGameSlotIndex);
+		TRACE_WARNING(TEXT("Invalid SaveGame Slot Index : %d"), _slot_index);
 		_OnAsyncSaveGameFinished.Broadcast(false);
 		return;
 	}
@@ -382,12 +414,17 @@ void USaveGameSubsystem::AsyncSaveGame()
 		_AsyncSaveGameWidget->AddToViewport(999);
 	}
 
-	return UGameplayStatics::AsyncSaveGameToSlot(_SaveGame, MakeSaveGameSlotName(_ActiveSaveGameSlotIndex), 0,
+	return UGameplayStatics::AsyncSaveGameToSlot(_SaveGame, MakeSaveGameSlotName(_slot_index), 0,
 		FAsyncSaveGameToSlotDelegate::CreateWeakLambda(this,
-			[this](const FString& _slot_name, const int32 _user_index, bool _is_success)
+			[this, _slot_index](const FString& _slot_name, const int32 _user_index, bool _is_success)
 			{
 				if (_IsDeinitializing)
 					return;
+
+				if (_is_success)
+				{
+					_ActiveSaveGameSlotIndex = _slot_index;
+				}
 
 				_IsAsyncSaving = false;
 				SetSaveGameCanModify(true);
@@ -403,24 +440,46 @@ void USaveGameSubsystem::AsyncSaveGame()
 	);
 }
 
-void USaveGameSubsystem::ResetGame()
+bool USaveGameSubsystem::ResetGameSlot(int32 _slot_index)
 {
 	if (_IsAsyncSaving || _IsAsyncLoading)
 	{
 		TRACE_WARNING(TEXT("Async save/load is in progress."));
-		return;
+		return false;
 	}
 
-	if (IsInvalid(_SaveGame))
+	if (IsValidSaveGameSlotIndex(_slot_index) == false)
 	{
-		TRACE_ERROR(TEXT("SaveGame Is Invalid"));
-		return;
+		TRACE_WARNING(TEXT("Invalid SaveGame Slot Index : %d"), _slot_index);
+		return false;
 	}
 
-	_SaveGame->ClearData();
+	TObjectPtr<UCustomSaveGame> previous_save_game = _SaveGame;
+	const int32 previous_active_save_game_slot_index = _ActiveSaveGameSlotIndex;
+
+	auto new_save_game = CreateConfiguredSaveGameObject();
+	if (IsInvalid(new_save_game))
+	{
+		TRACE_ERROR(TEXT("SaveGame Create Failed"));
+		return false;
+	}
+
+	_SaveGame = new_save_game;
+	_ActiveSaveGameSlotIndex = _slot_index;
+	SetSaveGameCanModify(true);
+
+	if (SaveGameSlot(_slot_index))
+	{
+		return true;
+	}
+
+	_SaveGame = previous_save_game;
+	_ActiveSaveGameSlotIndex = previous_active_save_game_slot_index;
+	SetSaveGameCanModify(true);
+	return false;
 }
 
-bool USaveGameSubsystem::CreateNewGame(int32 _slot_index)
+bool USaveGameSubsystem::CreateNewGameSlot(int32 _slot_index)
 {
 	if (_IsAsyncSaving || _IsAsyncLoading)
 	{
@@ -443,12 +502,19 @@ bool USaveGameSubsystem::CreateNewGame(int32 _slot_index)
 	const int32 previous_last_save_game_slot_index = _SaveGameSlotRegistry->_LastSaveGameSlotIndex;
 	const int32 previous_active_save_game_slot_index = _ActiveSaveGameSlotIndex;
 
-	if (_slot_index <= 0)
+	const int32 max_save_game_slot_count = GetConfiguredMaxSaveGameSlotCount();
+	if (GetSaveGameSlotCount() >= max_save_game_slot_count)
+	{
+		TRACE_WARNING(TEXT("SaveGame Slot Count Limit Exceeded : %d"), max_save_game_slot_count);
+		return false;
+	}
+
+	if (_slot_index < 0)
 	{
 		_slot_index = AllocateSaveGameSlotIndex();
 	}
 
-	if (_slot_index <= 0)
+	if (IsInConfiguredSaveGameSlotRange(_slot_index) == false)
 	{
 		TRACE_WARNING(TEXT("Invalid SaveGame Slot Index : %d"), _slot_index);
 		return false;
@@ -476,7 +542,7 @@ bool USaveGameSubsystem::CreateNewGame(int32 _slot_index)
 	_ActiveSaveGameSlotIndex = _slot_index;
 	SetSaveGameCanModify(true);
 
-	const bool save_game_success = SaveGame();
+	const bool save_game_success = SaveGameSlot(_slot_index);
 	const bool save_registry_success = SaveSaveGameSlotRegistry();
 	if (save_game_success == false || save_registry_success == false)
 	{
@@ -535,24 +601,26 @@ bool USaveGameSubsystem::DeleteSaveGameSlot(int32 _slot_index)
 //////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
-UCustomSaveGame* USaveGameHelper::GetSaveGame_Internal(const UObject* _world_ctx)
+UCustomSaveGame* USaveGameHelper::GetCurrentSaveGame_Internal(const UObject* _world_ctx)
 {
 	auto save_game_subsys = UCommonUtils::GetGameInstanceSubsystem<USaveGameSubsystem>(_world_ctx);
 	if (IsValid(save_game_subsys))
 	{
-		return save_game_subsys->GetSaveGame();
+		return save_game_subsys->GetCurrentSaveGame();
 	}
 
 	return nullptr;
 }
 
-void USaveGameHelper::SaveGame(const UObject* _world_ctx)
+UCustomSaveGame* USaveGameHelper::GetSaveGameFromSlot_Internal(const UObject* _world_ctx, int32 _slot_index)
 {
 	auto save_game_subsys = UCommonUtils::GetGameInstanceSubsystem<USaveGameSubsystem>(_world_ctx);
-	if (IsInvalid(save_game_subsys))
-		return;
+	if (IsValid(save_game_subsys))
+	{
+		return save_game_subsys->GetSaveGameFromSlot(_slot_index);
+	}
 
-	save_game_subsys->SaveGame();
+	return nullptr;
 }
 
 int32 USaveGameHelper::GetSaveGameSlotCount(const UObject* _world_ctx)
@@ -630,12 +698,43 @@ void USaveGameHelper::AsyncLoadGameSlot(const UObject* _world_ctx, int32 _slot_i
 	save_game_subsys->AsyncLoadGameSlot(_slot_index);
 }
 
-bool USaveGameHelper::CreateNewGame(const UObject* _world_ctx, int32 _slot_index)
+bool USaveGameHelper::SaveGameSlot(const UObject* _world_ctx, int32 _slot_index)
 {
 	auto save_game_subsys = UCommonUtils::GetGameInstanceSubsystem<USaveGameSubsystem>(_world_ctx);
 	if (IsValid(save_game_subsys))
 	{
-		return save_game_subsys->CreateNewGame(_slot_index);
+		return save_game_subsys->SaveGameSlot(_slot_index);
+	}
+
+	return false;
+}
+
+void USaveGameHelper::AsyncSaveGameSlot(const UObject* _world_ctx, int32 _slot_index)
+{
+	auto save_game_subsys = UCommonUtils::GetGameInstanceSubsystem<USaveGameSubsystem>(_world_ctx);
+	if (IsInvalid(save_game_subsys))
+		return;
+
+	save_game_subsys->AsyncSaveGameSlot(_slot_index);
+}
+
+bool USaveGameHelper::ResetGameSlot(const UObject* _world_ctx, int32 _slot_index)
+{
+	auto save_game_subsys = UCommonUtils::GetGameInstanceSubsystem<USaveGameSubsystem>(_world_ctx);
+	if (IsValid(save_game_subsys))
+	{
+		return save_game_subsys->ResetGameSlot(_slot_index);
+	}
+
+	return false;
+}
+
+bool USaveGameHelper::CreateNewGameSlot(const UObject* _world_ctx, int32 _slot_index)
+{
+	auto save_game_subsys = UCommonUtils::GetGameInstanceSubsystem<USaveGameSubsystem>(_world_ctx);
+	if (IsValid(save_game_subsys))
+	{
+		return save_game_subsys->CreateNewGameSlot(_slot_index);
 	}
 
 	return false;

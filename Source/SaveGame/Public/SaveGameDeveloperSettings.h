@@ -19,6 +19,8 @@ public:
 	UPROPERTY(EditAnywhere, Config, Category = "SaveGame")
 	FString _SaveGameSlotName = TEXT("SaveGameSlot");
 
+	UPROPERTY(EditAnywhere, Config, Category = "SaveGame", meta = (ClampMin = "1", UIMin = "1"))
+	int32 _MaxSaveGameSlotCount = 1;
 
 	UPROPERTY(EditAnywhere, Config, Category = "SaveGame")
 	TSubclassOf<class UWidgetBase> _AsyncSaveGameWidgetClass = nullptr;
