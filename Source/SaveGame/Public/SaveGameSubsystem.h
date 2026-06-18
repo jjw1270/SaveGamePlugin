@@ -14,17 +14,37 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDM_OnAsyncLoadGameFinished, bool, _
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FDM_OnAsyncSaveGameStarted);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDM_OnAsyncSaveGameFinished, bool, _save_success);
 
+UCLASS()
+class SAVEGAME_API USaveGameSlotRegistry : public USaveGame
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY()
+	TMap<int32, FString> _SaveGameSlotMap;
+
+	UPROPERTY()
+	int32 _LastSaveGameSlotIndex = 0;
+};
+
 /*
- * 오직 하나의 슬롯만 존재.
+ * 생성된 슬롯 목록을 registry SaveGame에 보관한다.
+ * 메모리 SaveGame 객체는 활성 슬롯 하나만 보관한다.
  */
 UCLASS()
 class SAVEGAME_API USaveGameSubsystem : public UGameInstanceSubsystem
 {
 	GENERATED_BODY()
-	
+
 protected:
 	UPROPERTY()
 	TObjectPtr<UCustomSaveGame> _SaveGame = nullptr;
+
+	UPROPERTY()
+	TObjectPtr<USaveGameSlotRegistry> _SaveGameSlotRegistry = nullptr;
+
+	UPROPERTY()
+	int32 _ActiveSaveGameSlotIndex = INDEX_NONE;
 
 	UPROPERTY()
 	TObjectPtr<class UWidgetBase> _AsyncSaveGameWidget = nullptr;
@@ -40,6 +60,12 @@ protected:
 
 protected:
 	void SetSaveGameCanModify(bool _can_modify);
+	UCustomSaveGame* CreateConfiguredSaveGameObject() const;
+	USaveGameSlotRegistry* CreateSaveGameSlotRegistryObject() const;
+	USaveGameSlotRegistry* LoadOrCreateSaveGameSlotRegistry() const;
+	bool SaveSaveGameSlotRegistry() const;
+	int32 AllocateSaveGameSlotIndex();
+	FString MakeSaveGameSlotName(int32 _slot_index) const;
 
 public:
 	UPROPERTY(BlueprintAssignable, Category = "SaveGame|Event")
@@ -67,9 +93,15 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "SaveGame")
 	bool LoadGame();
-	
+
+	UFUNCTION(BlueprintCallable, Category = "SaveGame")
+	bool LoadGameSlot(int32 _slot_index);
+
 	UFUNCTION(BlueprintCallable, Category = "SaveGame")
 	void AsyncLoadGame();
+
+	UFUNCTION(BlueprintCallable, Category = "SaveGame")
+	void AsyncLoadGameSlot(int32 _slot_index);
 
 	UFUNCTION(BlueprintCallable, Category = "SaveGame")
 	bool SaveGame();
@@ -80,12 +112,36 @@ public:
 	/*
 	 * 현재 메모리 SaveGame 데이터만 초기화한다.
 	 * 디스크 슬롯에 반영하려면 ResetGame() 이후 SaveGame()을 호출해야 한다.
-	 * 슬롯 파일 자체를 삭제하려면 에디터 툴바의 Delete Save Slot 또는 DeleteGameInSlot을 사용한다.
+	 * 슬롯 파일 자체를 삭제하려면 DeleteSaveGameSlot(), 에디터 툴바의 Delete Save Slots 또는 DeleteGameInSlot을 사용한다.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "SaveGame")
 	void ResetGame();
 
+	UFUNCTION(BlueprintCallable, Category = "SaveGame")
+	bool CreateNewGame(int32 _slot_index = -1);
+
+	UFUNCTION(BlueprintCallable, Category = "SaveGame")
+	bool DeleteSaveGameSlot(int32 _slot_index);
+
 public:
+	UFUNCTION(BlueprintPure, Category = "SaveGame")
+	int32 GetSaveGameSlotCount() const;
+
+	UFUNCTION(BlueprintPure, Category = "SaveGame")
+	TArray<int32> GetSaveGameSlotIndices() const;
+
+	UFUNCTION(BlueprintPure, Category = "SaveGame")
+	FString GetSaveGameSlotName(int32 _slot_index) const;
+
+	UFUNCTION(BlueprintPure, Category = "SaveGame")
+	int32 GetActiveSaveGameSlotIndex() const { return _ActiveSaveGameSlotIndex; }
+
+	UFUNCTION(BlueprintPure, Category = "SaveGame")
+	bool IsValidSaveGameSlotIndex(int32 _slot_index) const;
+
+	UFUNCTION(BlueprintPure, Category = "SaveGame")
+	bool DoesSaveGameExist(int32 _slot_index) const;
+
 	UFUNCTION(BlueprintPure, Category = "SaveGame")
 	bool IsAsyncLoading() const { return _IsAsyncLoading; }
 
@@ -97,6 +153,13 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "SaveGame")
 	UCustomSaveGame* GetSaveGame() const { return _SaveGame; }
+
+public:
+	static FString GetConfiguredSaveGameSlotNamePrefix();
+	static FString MakeConfiguredSaveGameSlotName(int32 _slot_index);
+	static FString MakeConfiguredSaveGameSlotRegistryName();
+	static USaveGameSlotRegistry* LoadConfiguredSaveGameSlotRegistry();
+	static bool SaveConfiguredSaveGameSlotRegistry(USaveGameSlotRegistry* _slot_registry);
 
 };
 
@@ -127,10 +190,37 @@ public:
 		return GetSaveGame_Internal(_world_ctx);
 	}
 
+	UFUNCTION(BlueprintPure, meta = (WorldContext = "_world_ctx"), Category = "SaveGame")
+	static int32 GetSaveGameSlotCount(const UObject* _world_ctx);
+
+	UFUNCTION(BlueprintPure, meta = (WorldContext = "_world_ctx"), Category = "SaveGame")
+	static TArray<int32> GetSaveGameSlotIndices(const UObject* _world_ctx);
+
+	UFUNCTION(BlueprintPure, meta = (WorldContext = "_world_ctx"), Category = "SaveGame")
+	static FString GetSaveGameSlotName(const UObject* _world_ctx, int32 _slot_index);
+
+	UFUNCTION(BlueprintPure, meta = (WorldContext = "_world_ctx"), Category = "SaveGame")
+	static int32 GetActiveSaveGameSlotIndex(const UObject* _world_ctx);
+
+	UFUNCTION(BlueprintPure, meta = (WorldContext = "_world_ctx"), Category = "SaveGame")
+	static bool DoesSaveGameExist(const UObject* _world_ctx, int32 _slot_index);
+
 private:
 	static UCustomSaveGame* GetSaveGame_Internal(const UObject* _world_ctx);
 
 public:
 	UFUNCTION(BlueprintCallable, meta = (WorldContext = "_world_ctx"), Category = "SaveGame")
 	static void SaveGame(const UObject* _world_ctx);
+
+	UFUNCTION(BlueprintCallable, meta = (WorldContext = "_world_ctx"), Category = "SaveGame")
+	static bool LoadGameSlot(const UObject* _world_ctx, int32 _slot_index);
+
+	UFUNCTION(BlueprintCallable, meta = (WorldContext = "_world_ctx"), Category = "SaveGame")
+	static void AsyncLoadGameSlot(const UObject* _world_ctx, int32 _slot_index);
+
+	UFUNCTION(BlueprintCallable, meta = (WorldContext = "_world_ctx"), Category = "SaveGame")
+	static bool CreateNewGame(const UObject* _world_ctx, int32 _slot_index = -1);
+
+	UFUNCTION(BlueprintCallable, meta = (WorldContext = "_world_ctx"), Category = "SaveGame")
+	static bool DeleteSaveGameSlot(const UObject* _world_ctx, int32 _slot_index);
 };

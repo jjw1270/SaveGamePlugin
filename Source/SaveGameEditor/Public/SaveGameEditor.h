@@ -16,6 +16,8 @@ private:
 
 	void RegisterMenus();
 	void AddDeleteSaveSlotMenuEntry();
+	void FillDeleteSaveSlotMenu(class UToolMenu* _menu);
 
-	void OnClicked_DeleteSaveSlot();
+	void OnClicked_DeleteAllSaveSlots();
+	void OnClicked_DeleteSaveSlot(int32 _slot_index);
 };

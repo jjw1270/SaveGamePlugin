@@ -1,4 +1,4 @@
-﻿# SaveGame User Guide
+# SaveGame User Guide
 
 이 문서는 SaveGame 플러그인을 실제 프로젝트에서 사용하는 사람을 위한 작업 가이드다. 코드 구조 설명보다 **무엇을 만들고, 어디에 설정하고, 언제 로드/저장하고, 어떤 정책을 지켜야 하는지**에 초점을 둔다.
 
@@ -6,22 +6,24 @@
 
 ## 1. 기본 개념
 
-SaveGame 플러그인은 다음 단위로 저장 시스템을 구성한다.
+SaveGame 플러그인은 타이틀 화면에서 저장 슬롯을 선택한 뒤, 선택된 활성 슬롯 하나를 기준으로 저장 시스템을 구성한다.
 
 | 이름 | 설명 |
 | --- | --- |
 | CustomSaveGame | key-value 데이터와 프로젝트별 저장 필드를 담는 SaveGame 객체 |
 | SaveGameSubsystem | GameInstance 단위로 현재 SaveGame 객체를 보관하고 저장/로드를 수행하는 Subsystem |
-| SaveGameDeveloperSettings | SaveGame 클래스, 슬롯명, async save UI를 지정하는 Project Settings |
+| SaveGameDeveloperSettings | SaveGame 클래스, 슬롯명 prefix, async save UI를 지정하는 Project Settings |
 | SaveGameHelper | Blueprint/C++에서 현재 SaveGame과 저장 함수를 쉽게 호출하는 helper |
-| Delete Save Slot | 에디터 툴바에서 디스크 저장 슬롯을 삭제하는 버튼 |
+| Delete Save Slot | 에디터 툴바에서 전체 디스크 저장 슬롯 또는 선택한 슬롯을 삭제하는 메뉴 |
 
 가장 흔한 흐름은 다음과 같다.
 
 ```text
 SaveGame 클래스 만들기
 -> Project Settings에 SaveGameClass/SlotName 설정
--> 게임 시작 또는 로비에서 LoadGame/AsyncLoadGame 호출
+-> 타이틀 화면에서 등록된 슬롯 목록 표시
+-> 기존 슬롯은 LoadGameSlot/AsyncLoadGameSlot 호출
+-> 새 슬롯 버튼은 CreateNewGame 호출
 -> 플레이 중 SaveGame 데이터 수정
 -> 필요한 시점에 SaveGame/AsyncSaveGame 호출
 ```
@@ -102,7 +104,7 @@ Project Settings에서 SaveGame 설정을 찾고 다음을 지정한다.
 | 설정 | 필수 | 설명 |
 | --- | --- | --- |
 | SaveGameClass | 필수 | `UCustomSaveGame` 파생 클래스 |
-| SaveGameSlotName | 권장 | 저장 슬롯명. 비워두지 않는 것을 권장 |
+| SaveGameSlotName | 권장 | 저장 슬롯명 prefix. 실제 파일 슬롯명은 `{Prefix}_{Index}` 형식 |
 | AsyncSaveGameWidgetClass | 선택 | async save 중 표시할 `UWidgetBase` 위젯 Blueprint |
 
 `DefaultGame.ini` 예:
@@ -121,21 +123,38 @@ _AsyncSaveGameWidgetClass=/Script/UMG.WidgetBlueprintGeneratedClass'/Game/UI/UI_
 
 ---
 
-## 3. 게임 시작 시 로드하기
+## 3. 타이틀 화면에서 슬롯 선택하기
 
-SaveGameSubsystem은 초기화 시 새 빈 SaveGame 객체를 만든다. 디스크 슬롯을 자동 로드하지 않는다.
+SaveGameSubsystem은 초기화 시 새 빈 SaveGame 객체와 슬롯 registry를 만들고, 활성 슬롯은 아직 선택하지 않은 상태로 시작한다. 디스크 슬롯을 자동 로드하지 않는다.
 
-따라서 저장된 데이터를 쓰려면 프로젝트 흐름에서 직접 로드해야 한다.
+따라서 타이틀 화면에서는 registry에 등록된 슬롯 목록을 조회한 뒤, 플레이어가 선택한 슬롯만 로드하거나 새 슬롯을 생성해야 한다.
 
-### 3.1 동기 로드
+### 3.1 슬롯 버튼 구성
 
-간단한 프로젝트나 로비 진입 직전에 즉시 로드해도 되는 경우:
+타이틀 UI에서는 registry에 등록된 슬롯 번호 목록을 조회해 기존 슬롯 버튼을 만들고, 별도의 새 슬롯 버튼을 제공한다.
 
 ```cpp
 USaveGameSubsystem* SaveSubsystem = GetGameInstance()->GetSubsystem<USaveGameSubsystem>();
 if (IsValid(SaveSubsystem))
 {
-	const bool bLoaded = SaveSubsystem->LoadGame();
+	const TArray<int32> SlotIndices = SaveSubsystem->GetSaveGameSlotIndices();
+	for (const int32 SlotIndex : SlotIndices)
+	{
+		const bool bHasSaveData = SaveSubsystem->DoesSaveGameExist(SlotIndex);
+		// 등록된 슬롯 버튼을 이어하기 가능 상태로 갱신한다.
+	}
+}
+```
+
+### 3.2 기존 슬롯 동기 로드
+
+플레이어가 저장 데이터가 있는 슬롯을 선택한 경우:
+
+```cpp
+USaveGameSubsystem* SaveSubsystem = GetGameInstance()->GetSubsystem<USaveGameSubsystem>();
+if (IsValid(SaveSubsystem))
+{
+	const bool bLoaded = SaveSubsystem->LoadGameSlot(SelectedSlotIndex);
 	if (bLoaded == false)
 	{
 		// 슬롯 없음 또는 로드 실패. 기존 메모리 SaveGame은 유지됨.
@@ -143,9 +162,9 @@ if (IsValid(SaveSubsystem))
 }
 ```
 
-### 3.2 비동기 로드
+### 3.3 기존 슬롯 비동기 로드
 
-로비 UI에서 버튼 상태를 갱신해야 한다면 async load delegate를 사용한다.
+타이틀 UI에서 로드 완료 후 화면 전환을 해야 한다면 async load delegate를 사용한다.
 
 ```cpp
 void UMyLobbyWidget::NativeConstruct()
@@ -156,7 +175,7 @@ void UMyLobbyWidget::NativeConstruct()
 	if (IsValid(SaveSubsystem))
 	{
 		SaveSubsystem->_OnAsyncLoadGameFinished.AddDynamic(this, &UMyLobbyWidget::OnAsyncLoadGameFinished);
-		SaveSubsystem->AsyncLoadGame();
+		SaveSubsystem->AsyncLoadGameSlot(SelectedSlotIndex);
 	}
 }
 
@@ -175,8 +194,23 @@ void UMyLobbyWidget::NativeDestruct()
 ```cpp
 void UMyLobbyWidget::OnAsyncLoadGameFinished(bool _load_success)
 {
-	// _load_success가 false여도 기존 메모리 SaveGame은 유지된다.
-	// 저장된 진행 상태가 있는지 SaveGame 내용을 직접 확인한다.
+	// _load_success가 true이면 선택한 슬롯이 활성 슬롯이 된다.
+	// _load_success가 false이면 기존 메모리 SaveGame과 기존 활성 슬롯은 유지된다.
+}
+```
+
+### 3.4 새 슬롯으로 게임 시작
+
+플레이어가 새 슬롯 버튼을 누른 경우에는 슬롯 번호를 미리 만들지 않고 `CreateNewGame()` 기본 호출로 새 슬롯을 등록한다.
+
+```cpp
+USaveGameSubsystem* SaveSubsystem = GetGameInstance()->GetSubsystem<USaveGameSubsystem>();
+if (IsValid(SaveSubsystem))
+{
+	if (SaveSubsystem->CreateNewGame())
+	{
+		// 새 SlotIndex가 활성 슬롯이 되며, 빈 SaveGame이 즉시 디스크에 생성된다.
+	}
 }
 ```
 
@@ -317,7 +351,7 @@ if (IsValid(SaveSubsystem))
 }
 ```
 
-동기 저장은 즉시 결과를 bool로 받을 수 있다.
+동기 저장은 현재 활성 슬롯에 저장하며, 즉시 결과를 bool로 받을 수 있다.
 
 ```cpp
 const bool bSaved = SaveSubsystem->SaveGame();
@@ -335,7 +369,7 @@ SaveSubsystem->AsyncSaveGame();
 SaveSubsystem->_OnAsyncSaveGameFinished.AddDynamic(this, &UMyObject::OnAsyncSaveGameFinished);
 ```
 
-async save 중에는 다음이 자동으로 처리된다.
+async save는 현재 활성 슬롯에 저장하며, 저장 중에는 다음이 자동으로 처리된다.
 
 1. `_IsAsyncSaving = true`
 2. SaveGame 수정 잠금
@@ -348,7 +382,7 @@ async save 중에는 다음이 자동으로 처리된다.
 
 ---
 
-## 8. Reset과 Delete Save Slot 차이
+## 8. Reset과 Delete Save Slot 메뉴 차이
 
 ### 8.1 ResetGame
 
@@ -370,15 +404,17 @@ SaveSubsystem->SaveGame();
 - 새 게임 시작 전 메모리 진행 상태 초기화
 - 초기화한 상태를 다시 저장해 기존 슬롯을 덮어쓰기
 
-### 8.2 Delete Save Slot
+### 8.2 Delete Save Slot 메뉴
 
-에디터 툴바의 `Delete Save Slot`은 디스크 슬롯 파일을 삭제한다.
+에디터 툴바의 `Delete Save Slot` 메뉴는 전체 슬롯 삭제와 개별 슬롯 삭제를 제공한다.
 
 주의:
 
-- 메모리 `_SaveGame`은 그대로 남는다.
+- `Delete All Save Slots`는 registry에 등록된 모든 디스크 슬롯 파일을 삭제한다.
+- `Delete Save Slot N`은 지정한 N번 디스크 슬롯 파일만 삭제한다.
+- 에디터 메뉴는 런타임 메모리 `_SaveGame`을 직접 초기화하지 않는다.
 - PIE 중 이미 로드된 데이터까지 초기화하지 않는다.
-- 런타임에서 슬롯을 삭제하고 싶다면 `UGameplayStatics::DeleteGameInSlot`을 직접 호출한다.
+- 런타임에서 특정 슬롯을 삭제하려면 `DeleteSaveGameSlot(SlotIndex)`를 사용한다.
 
 ---
 
@@ -413,8 +449,8 @@ SaveGame 플러그인은 async 작업 중 다른 저장/로드/리셋을 막는�
 
 | 진행 중 | 차단되는 작업 |
 | --- | --- |
-| Async Save | Load, Save, Reset, Async Load, Async Save |
-| Async Load | Load, Save, Reset, Async Load, Async Save |
+| Async Save | Load, Load Slot, Save, Reset, Async Load, Async Load Slot, Async Save, Create New Game, Delete Slot |
+| Async Load | Load, Load Slot, Save, Reset, Async Load, Async Load Slot, Async Save, Create New Game, Delete Slot |
 
 차단 시:
 
@@ -441,24 +477,25 @@ if (SaveSubsystem->CanModifySaveGame())
 2. 프로젝트 전용 저장 필드는 `UPROPERTY()`로 선언한다.
 3. 저장 필드 수정 함수에는 `CanModify()` 가드를 넣는다.
 4. `ClearData()`와 `IsEmpty()`를 override한다.
-5. Project Settings에서 `SaveGameClass`와 `SaveGameSlotName`을 지정한다.
-6. 로비 또는 GameInstance 흐름에서 `LoadGame()` / `AsyncLoadGame()`을 호출한다.
-7. UI는 로드 완료 후 저장된 진행 상태를 확인해 버튼 상태를 갱신한다.
-8. 플레이 중 SaveGame 데이터를 수정한다.
-9. 중요한 진행 지점에서 `SaveGame()` 또는 `AsyncSaveGame()`을 호출한다.
-10. 새 게임 시작 시 `ResetGame()` 후 필요한 초기 진행 상태를 저장한다.
-11. 에디터에서 테스트 슬롯을 지울 때는 `Delete Save Slot`을 사용한다.
+5. Project Settings에서 `SaveGameClass`, `SaveGameSlotName`을 지정한다.
+6. 타이틀 UI에서 `GetSaveGameSlotIndices()`로 등록된 슬롯 버튼을 만든다.
+7. 각 버튼은 등록된 슬롯을 이어하기 대상으로 표시하고, 별도의 새 슬롯 버튼을 제공한다.
+8. 기존 슬롯 선택 시 `LoadGameSlot(SlotIndex)` 또는 `AsyncLoadGameSlot(SlotIndex)`를 호출한다.
+9. 새 슬롯 선택 시 `CreateNewGame()`을 호출해 registry에 슬롯을 추가한다.
+10. 플레이 중 SaveGame 데이터를 수정한다.
+11. 중요한 진행 지점에서 `SaveGame()` 또는 `AsyncSaveGame()`을 호출한다.
+12. 에디터에서 테스트 슬롯을 지울 때는 `Delete Save Slot` 메뉴의 전체 삭제 또는 개별 슬롯 삭제를 사용한다.
 
 ---
 
 ## 12. 운영 팁
 
-- 저장 슬롯이 없을 수 있으므로 load 실패는 정상 흐름으로 처리한다.
-- `LoadGame()` 실패 시 메모리 SaveGame은 유지되므로, 실제 진행 가능 여부는 SaveGame 내용으로 판단한다.
+- 저장 슬롯이 없을 수 있으므로 타이틀에서는 `GetSaveGameSlotIndices()` 결과가 비어 있는 상태를 처리한다.
+- `LoadGameSlot(SlotIndex)` 실패 시 메모리 SaveGame과 활성 슬롯은 유지되므로, 새 슬롯 시작은 `CreateNewGame()`을 사용한다.
 - `FindSaved...` 실패 시 out 값은 유지된다. 이전 값이 남으면 안 되는 UI에서는 호출 전에 값을 비운다.
 - key 이름은 문자열 literal을 흩뿌리기보다 상수로 관리하는 것이 안전하다.
 - 타입을 바꿀 수 있는 key 설계는 피한다. 필요하면 새 key를 만든다.
 - async save/load 중에는 SaveGame을 수정하지 않는다.
 - 파생 SaveGame 필드는 `CanModify()`를 확인한다.
-- `ResetGame()`과 `Delete Save Slot`은 다르다. 메모리 초기화와 디스크 삭제를 구분한다.
+- `ResetGame()`과 `Delete Save Slot` 메뉴는 다르다. 메모리 초기화와 디스크 삭제를 구분한다.
 - 종료 중 async 완료 이벤트는 보장하지 않는다. 종료 정리는 `Deinitialize()`가 처리한다.

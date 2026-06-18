@@ -9,6 +9,7 @@
 #include "Engine/Engine.h"
 #include "Kismet/GameplayStatics.h"
 #include "SaveGameDeveloperSettings.h"
+#include "SaveGameSubsystem.h"
 
 #define LOCTEXT_NAMESPACE "FSaveGameEditorModule"
 
@@ -55,22 +56,85 @@ void FSaveGameEditorModule::AddDeleteSaveSlotMenuEntry()
 
 	FToolMenuSection& section = toolbar_menu->FindOrAddSection(TEXT("DeleteSaveSlot"));
 
-	section.AddEntry(FToolMenuEntry::InitToolBarButton(
+	section.AddEntry(FToolMenuEntry::InitComboButton(
 		TEXT("DeleteSaveSlot"),
-		FUIAction(FExecuteAction::CreateRaw(this, &FSaveGameEditorModule::OnClicked_DeleteSaveSlot)),
+		FUIAction(),
+		FNewToolMenuDelegate::CreateRaw(this, &FSaveGameEditorModule::FillDeleteSaveSlotMenu),
 		LOCTEXT("DeleteSaveSlot_Label", "Delete Save Slot"),
-		LOCTEXT("DeleteSaveSlot_ToolTip", "Delete Save Slot."),
+		LOCTEXT("DeleteSaveSlot_ToolTip", "Delete all configured SaveGame slots or select a specific slot to delete."),
 		FSlateIcon(FSaveGameEditorStyle::GetStyleSetName(), "SaveGame.DeleteSaveSlot")
 	));
 }
 
-void FSaveGameEditorModule::OnClicked_DeleteSaveSlot()
+void FSaveGameEditorModule::FillDeleteSaveSlotMenu(UToolMenu* _menu)
 {
-	const auto settings = GetDefault<USaveGameDeveloperSettings>();
-	if (IsInvalid(settings))
+	if (IsInvalid(_menu))
 		return;
 
-	UGameplayStatics::DeleteGameInSlot(settings->_SaveGameSlotName, 0);
+	auto slot_registry = USaveGameSubsystem::LoadConfiguredSaveGameSlotRegistry();
+	TArray<int32> slot_indices;
+	if (IsValid(slot_registry))
+	{
+		slot_registry->_SaveGameSlotMap.GetKeys(slot_indices);
+		slot_indices.Sort();
+	}
+
+	FToolMenuSection& all_slot_section = _menu->AddSection(TEXT("DeleteAllSaveSlots"), LOCTEXT("DeleteAllSaveSlots_Section", "All Slots"));
+	all_slot_section.AddMenuEntry(
+		TEXT("DeleteAllSaveSlots"),
+		LOCTEXT("DeleteAllSaveSlots_Label", "Delete All Save Slots"),
+		LOCTEXT("DeleteAllSaveSlots_ToolTip", "Delete all registered SaveGame slots."),
+		FSlateIcon(FSaveGameEditorStyle::GetStyleSetName(), "SaveGame.DeleteSaveSlot"),
+		FUIAction(FExecuteAction::CreateRaw(this, &FSaveGameEditorModule::OnClicked_DeleteAllSaveSlots))
+	);
+
+	FToolMenuSection& slot_section = _menu->AddSection(TEXT("DeleteSelectedSaveSlot"), LOCTEXT("DeleteSelectedSaveSlot_Section", "Selected Slot"));
+	for (const int32 slot_index : slot_indices)
+	{
+		slot_section.AddMenuEntry(
+			FName(*FString::Printf(TEXT("DeleteSaveSlot_%d"), slot_index)),
+			FText::Format(LOCTEXT("DeleteSaveSlot_LabelFormat", "Delete Save Slot {0}"), FText::AsNumber(slot_index)),
+			FText::Format(LOCTEXT("DeleteSaveSlot_ToolTipFormat", "Delete only SaveGame slot {0}."), FText::AsNumber(slot_index)),
+			FSlateIcon(FSaveGameEditorStyle::GetStyleSetName(), "SaveGame.DeleteSaveSlot"),
+			FUIAction(FExecuteAction::CreateRaw(this, &FSaveGameEditorModule::OnClicked_DeleteSaveSlot, slot_index))
+		);
+	}
+}
+
+void FSaveGameEditorModule::OnClicked_DeleteAllSaveSlots()
+{
+	auto slot_registry = USaveGameSubsystem::LoadConfiguredSaveGameSlotRegistry();
+	if (IsInvalid(slot_registry))
+		return;
+
+	TArray<int32> slot_indices;
+	slot_registry->_SaveGameSlotMap.GetKeys(slot_indices);
+	for (const int32 slot_index : slot_indices)
+	{
+		if (const FString* slot_name = slot_registry->_SaveGameSlotMap.Find(slot_index))
+		{
+			UGameplayStatics::DeleteGameInSlot(*slot_name, 0);
+		}
+	}
+
+	slot_registry->_SaveGameSlotMap.Empty();
+	slot_registry->_LastSaveGameSlotIndex = 0;
+	USaveGameSubsystem::SaveConfiguredSaveGameSlotRegistry(slot_registry);
+}
+
+void FSaveGameEditorModule::OnClicked_DeleteSaveSlot(int32 _slot_index)
+{
+	auto slot_registry = USaveGameSubsystem::LoadConfiguredSaveGameSlotRegistry();
+	if (IsInvalid(slot_registry))
+		return;
+
+	const FString* slot_name = slot_registry->_SaveGameSlotMap.Find(_slot_index);
+	if (slot_name == nullptr)
+		return;
+
+	UGameplayStatics::DeleteGameInSlot(*slot_name, 0);
+	slot_registry->_SaveGameSlotMap.Remove(_slot_index);
+	USaveGameSubsystem::SaveConfiguredSaveGameSlotRegistry(slot_registry);
 }
 
 #undef LOCTEXT_NAMESPACE
